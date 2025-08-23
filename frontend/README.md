@@ -4,6 +4,22 @@
 
 一个最小可运行模板：已配置好 Tailwind、PostCSS、Vite React 插件。
 
+项目结构：
+```
+vite-react-tailwind-starter
+├─ index.html
+├─ package.json
+├─ postcss.config.js
+├─ tailwind.config.js
+├─ vite.config.js
+├─ src
+│  ├─ pages/[CryptoSwapDEX.jsx ......]
+│  ├─ App.jsx
+│  ├─ index.css
+│  └─ main.jsx
+└─ README.md
+```
+
 ## 使用
 
 ```
