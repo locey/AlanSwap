@@ -1,4 +1,6 @@
-# Vite + React + TailwindCSS（无需 npx tailwindcss）
+## CryptoSwap DEX - 智能聚合器代币交换，前端代码
+
+**Vite + React + TailwindCSS（无需 npx tailwindcss）**
 
 一个最小可运行模板：已配置好 Tailwind、PostCSS、Vite React 插件。
 
