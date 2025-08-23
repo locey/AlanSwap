@@ -6,7 +6,7 @@
 
 项目结构：
 ```
-vite-react-tailwind-starter
+DEX-front
 ├─ index.html
 ├─ package.json
 ├─ postcss.config.js
