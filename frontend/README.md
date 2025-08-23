@@ -4,14 +4,9 @@
 
 ## 使用
 
-```bash
-# 进入项目目录
-cd vite-react-tailwind-starter
-
-# 安装依赖（任选其一）
+```
+# 安装依赖
 npm install
-# 或 pnpm install
-# 或 yarn
 
 # 启动开发
 npm run dev
@@ -21,5 +16,3 @@ npm run build
 npm run preview
 ```
 
-> 若你之前遇到 "@vitejs/plugin-react resolved to an ESM file" 的报错，
-> 确保不要用 `require` 去加载 Vite 配置，保持本模板中的 ESM/模块化写法即可。
