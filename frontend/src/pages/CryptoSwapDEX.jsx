@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import BackgroundStars from './BackgroundStars';
 import NotificationContainer from './NotificationContainer';
 import StatCard from './StatCard';
-import TokenInput from './TokenInput';
 import EmptyState from './EmptyState';
+import { ArrowUpDown, Settings, Info } from './Icons';
 
 
 const CryptoSwapDEX = () => {
@@ -15,6 +15,53 @@ const CryptoSwapDEX = () => {
   const [toToken, setToToken] = useState('USDC');
   const [isSwapping, setIsSwapping] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  //add swapSection--yy3
+  // const [fromToken, setFromToken] = useState('ETH');
+  // const [toToken, setToToken] = useState('USDC');
+  // const [fromAmount, setFromAmount] = useState('');
+  // const [toAmount, setToAmount] = useState('');
+  const [exchangeRate, setExchangeRate] = useState(1250.00);
+  const [slippage, setSlippage] = useState('0.5');
+
+  const tokens = [
+    { symbol: 'ETH', name: 'Ethereum', balance: 12.345, icon: '🔹' },
+    { symbol: 'USDC', name: 'USD Coin', balance: 1250.00, icon: '💎' },
+    { symbol: 'BTC', name: 'Bitcoin', balance: 0.5678, icon: '🟡' },
+    { symbol: 'USDT', name: 'Tether', balance: 500.00, icon: '💚' }
+  ];
+
+  const getTokenData = (symbol) => {
+    return tokens.find(token => token.symbol === symbol);
+  };
+
+  const handleSwapTokens = () => {
+    setFromToken(toToken);
+    setToToken(fromToken);
+    setFromAmount(toAmount);
+    setToAmount(fromAmount);
+  };
+
+  const handleFromAmountChange = (value) => {
+    setFromAmount(value);
+    if (value && !isNaN(value)) {
+      const calculated = fromToken === 'ETH' ? 
+        (parseFloat(value) * exchangeRate).toFixed(2) : 
+        (parseFloat(value) / exchangeRate).toFixed(6);
+      setToAmount(calculated);
+    } else {
+      setToAmount('');
+    }
+  };
+
+  const handleMaxClick = () => {
+    const tokenData = getTokenData(fromToken);
+    if (tokenData) {
+      const maxAmount = tokenData.balance.toString();
+      setFromAmount(maxAmount);
+      handleFromAmountChange(maxAmount);
+    }
+  };
 
   // 统计数据状态
   const [stats, setStats] = useState({
@@ -95,20 +142,7 @@ const CryptoSwapDEX = () => {
     } else {
       setToAmount('');
     }
-  }, [fromAmount, fromToken, toToken]);
-
-
-  // 代币项目组件
-  const TokenItem = ({ symbol, price, change }) => (
-    <div className="bg-black/30 border border-white/10 rounded-2xl p-4 text-center cursor-pointer hover:border-blue-500/50 transition-all duration-200 hover:-translate-y-1">
-      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 mx-auto mb-2"></div>
-      <div className="font-semibold mb-1">{symbol}</div>
-      <div className="text-green-400 text-sm mb-1">${price.toLocaleString()}</div>
-      <div className="text-green-400 text-xs">+{change}%</div>
-    </div>
-  );
-
-  
+  }, [fromAmount, fromToken, toToken]);  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white relative overflow-x-hidden">
@@ -118,6 +152,12 @@ const CryptoSwapDEX = () => {
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-6">
         {/* 头部导航 */}
         <header className="flex flex-col lg:flex-row justify-between items-center mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center animate-pulse-glow">
+              <span className="text-white font-bold animate-spin-slow">⚡</span>
+            </div>
+            <span className="text-xl font-bold neon-text-enhanced animate-bounce-slow">CryptoSwap</span>
+          </div>
           <div className="flex bg-slate-800/80 backdrop-blur-lg border border-white/10 rounded-3xl p-1 mb-4 lg:mb-0">
             {[
               { key: 'swap', label: '交换', icon: '🔄' },
@@ -134,7 +174,7 @@ const CryptoSwapDEX = () => {
                     : 'text-gray-300 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <span>{tab.icon}</span>
+                <span className='text-sm animate-bounce-slow'>{tab.icon}</span>
                 <span>{tab.label}</span>
               </button>
             ))}
@@ -158,200 +198,243 @@ const CryptoSwapDEX = () => {
           </div>
         </header>
 
-        {/* 交换界面 */}
-        {activeTab === 'swap' && (
-          <div className="space-y-8">
-            {/* 标题区域 */}
-            <div className="text-center">
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                交易
-              </h1>
-              <p className="text-gray-400 text-lg">提供流动性，赚取交易手续费</p>
-            </div>
-
-            {/* 统计数据 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatCard
-                title="我的流动性"
-                value={stats.liquidity}
-                change="+5.2% 本周"
-                gradient="from-cyan-400 to-blue-500"
-              />
-              <StatCard
-                title="累计手续费"
-                value={stats.fees}
-                change="+$0.34 今日"
-                gradient="from-green-400 to-emerald-500"
-              />
-              <StatCard
-                title="活跃池子"
-                value={`${stats.pools}`}
-                change="共 4 个池子"
-                gradient="from-purple-400 to-pink-500"
-              />
-            </div>
-
-            {/* 交换面板 */}
-            <div className="bg-slate-800/60 backdrop-blur-lg border border-white/10 rounded-3xl p-8 max-w-lg mx-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold">兑换代币</h3>
-                <button className="text-gray-400 hover:text-white transition-colors">
-                  ⚙️ 高级设置
+        <main className='relative z-10'>
+          {/* 交换界面 */}
+          {activeTab === 'swap' && (
+            <div className="w-full max-w-md mx-auto">
+            {/* 交换卡片 */}
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl">
+              {/* 标题和设置 */}
+              <div className="flex items-center justify-between mb-6">
+                <div data-slot="card-title" className="text-xl font-bold neon-text-enhanced">交换</div>
+                <button className="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700/70 transition-all">
+                  <Settings className="w-4 h-4 text-slate-300" />
                 </button>
               </div>
-
-              <div className="text-right text-sm text-gray-400 mb-4">余额: 1.2345 ETH</div>
-
-              <TokenInput
-                label="从"
-                value={fromAmount}
-                onChange={setFromAmount}
-                token={fromToken}
-                onTokenClick={() => showNotification('代币选择弹窗', 'info')}
-                balance="1.2345 ETH"
-              />
-
-              <div className="flex justify-center my-4">
+      
+              {/* 从 Token */}
+              <div className="relative mb-4">
+                <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-400">从</span>
+                    <span className="text-sm text-slate-400">
+                      余额: {getTokenData(fromToken)?.balance.toFixed(fromToken === 'ETH' ? 3 : 2)} {fromToken}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <select 
+                      value={fromToken}
+                      onChange={(e) => setFromToken(e.target.value)}
+                      className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      {tokens.map(token => (
+                        <option key={token.symbol} value={token.symbol}>
+                          {token.icon} {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={fromAmount}
+                      onChange={(e) => handleFromAmountChange(e.target.value)}
+                      placeholder="0.0"
+                      className="flex-1 bg-transparent text-white text-right text-xl font-semibold focus:outline-none"
+                    />
+                    <button 
+                      onClick={handleMaxClick}
+                      className="text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-cyan-400/10 px-2 py-1 rounded"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
+              </div>
+      
+              {/* 交换按钮 */}
+              <div className="flex justify-center mb-4 relative">
                 <button
-                  onClick={swapTokens}
-                  className="bg-slate-800/80 border-2 border-white/10 rounded-full w-12 h-12 text-white text-xl hover:border-blue-500/50 transition-all duration-200 hover:rotate-180"
+                  onClick={handleSwapTokens}
+                  className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-full border border-slate-600/30 transition-all hover:scale-110"
                 >
-                  ⇅
+                  <ArrowUpDown className="w-5 h-5 text-slate-300" />
                 </button>
               </div>
-
-              <TokenInput
-                label="到"
-                value={toAmount}
-                onChange={() => {}}
-                token={toToken}
-                onTokenClick={() => showNotification('代币选择弹窗', 'info')}
-                balance="1250.00 USDC"
-                disabled={true}
-              />
-
-              <button
-                onClick={executeSwap}
-                disabled={isSwapping}
-                className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold py-4 rounded-2xl transition-all duration-200 hover:-translate-y-1 disabled:transform-none"
-              >
-                {isSwapping ? '兑换中...' : walletConnected ? '兑换代币' : '请先连接钱包'}
-              </button>
-            </div>
-
-            {/* 热门代币 */}
-            <div className="bg-slate-800/60 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">热门代币</h3>
-                <span className="text-sm text-gray-400 bg-white/10 px-3 py-1 rounded-full">4 个代币</span>
+      
+              {/* 到 Token */}
+              <div className="relative mb-6">
+                <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-400">到</span>
+                    <span className="text-sm text-slate-400">
+                      余额: {getTokenData(toToken)?.balance.toFixed(toToken === 'USDC' ? 2 : 6)} {toToken}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <select 
+                      value={toToken}
+                      onChange={(e) => setToToken(e.target.value)}
+                      className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      {tokens.map(token => (
+                        <option key={token.symbol} value={token.symbol}>
+                          {token.icon} {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={toAmount}
+                      readOnly
+                      placeholder="0.0"
+                      className="flex-1 bg-transparent text-white text-right text-xl font-semibold focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(tokenPrices).map(([symbol, data]) => (
-                  <TokenItem
-                    key={symbol}
-                    symbol={symbol}
-                    price={data.price}
-                    change={data.change}
-                  />
+      
+              {/* 交换信息 */}
+              <div className="bg-slate-800/30 rounded-xl p-4 mb-6 border border-slate-700/20">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-400">汇率</span>
+                  <span className="text-white">1 {fromToken} ≈ {exchangeRate.toLocaleString()} {toToken}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-400">滑点</span>
+                  <span className="text-white">{slippage}%</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">手续费</span>
+                  <span className="text-white">~0.003 ETH</span>
+                </div>
+              </div>
+      
+              {/* 交换按钮 */}
+              <button 
+                disabled={!fromAmount || parseFloat(fromAmount) === 0}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:cursor-not-allowed"
+              >
+                {!fromAmount || parseFloat(fromAmount) === 0 ? '请先连接钱包' : '确认交换'}
+              </button>
+      
+              {/* 提示信息 */}
+              <div className="flex items-center gap-2 mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <Info className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                <p className="text-xs text-blue-300">
+                  交换前请确认代币地址和数量，交易一旦确认无法撤销
+                </p>
+              </div>
+            </div>
+      
+            {/* 市场趋势卡片 */}
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl mt-6">
+              <h3 className="text-lg font-semibold text-white mb-4">市场趋势</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {tokens.slice(0, 4).map((token, index) => (
+                  <div key={token.symbol} className="bg-slate-800/50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{token.icon}</span>
+                      <span className="text-sm font-medium text-white">{token.symbol}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400">{token.name}</span>
+                      <span className="text-sm font-semibold text-green-400">+2.34%</span>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
-        )}
+          )}
 
-        {/* 流动性界面 */}
-        {activeTab === 'liquidity' && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-              流动性池
-              </h1>
-              <p className="text-gray-400 text-lg">提供流动性，赚取交易手续费</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatCard title="我的流动性" value={stats.liquidity} change="+5.2% 本周" />
-              <StatCard title="累计手续费" value={stats.fees} change="+$0.34 今日" />
-              <StatCard title="活跃池子" value={stats.pools} change="共 4 个池子" />
-            </div>
-
-            <div className="flex justify-center">
-              <div className="bg-white/10 rounded-3xl p-1 flex">
-                <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
-                  所有池子
-                </button>
-                <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
-                  我的池子
-                </button>
+          {/* 流动性界面 */}
+          {activeTab === 'liquidity' && (
+            <div className="space-y-8">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold neon-text mb-2">流动性池</h1>
+                <p className="text-gray-400 text-lg">提供流动性，赚取交易手续费</p>
               </div>
-            </div>
 
-            <EmptyState connectWallet={connectWallet}
-              icon="💧"
-              title="连接钱包开始提供流动性"
-              description="连接您的钱包以添加流动性并赚取手续费"
-            />
-          </div>
-        )}
-
-        {/* 质押界面 */}
-        {activeTab === 'mining' && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-              质押挖矿
-              </h1>
-              <p className="text-gray-400 text-lg">质押您的代币，获得丰厚奖励</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatCard title="总质押价值" value={stats.totalStaked} change="+12.5% 本月" />
-              <StatCard title="累计奖励" value={stats.rewards} change="+$5.67 本日" />
-              <StatCard title="平均APY" value={`${stats.apy}%`} change="年化收益" />
-            </div>
-
-            <EmptyState connectWallet={connectWallet}
-              icon="🔒"
-              title="连接钱包开始质押"
-              description="连接您的钱包以查看和管理质押"
-            />
-          </div>
-        )}
-
-        {/* 空投界面 */}
-        {activeTab === 'rewards' && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                空投奖励
-              </h1>
-              <p className="text-gray-400 text-lg">参与活动，获得免费代币奖励</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatCard title="总奖励" value="750 CSWAP" change="+150 CSWAP 本周" gradient="from-cyan-400 to-blue-500" />
-              <StatCard title="已奖励" value="320 CSWAP" change="价值 ~$320" gradient="from-green-400 to-emerald-500" />
-              <StatCard title="待领取" value="400 CSWAP" change="价值 ~$400" gradient="from-purple-400 to-pink-500" />
-            </div>
-
-            <div className="flex justify-center mb-8">
-              <div className="bg-white/10 rounded-3xl p-1 flex">
-                <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
-                  空投活动
-                </button>
-                <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
-                  任务中心
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatCard title="我的流动性" value={stats.liquidity} change="+5.2% 本周" />
+                <StatCard title="累计手续费" value={stats.fees} change="+$0.34 今日" />
+                <StatCard title="活跃池子" value={stats.pools} change="共 4 个池子" />
               </div>
-            </div>
 
-            <EmptyState connectWallet={connectWallet}
-              icon="🎁"
-              title="连接钱包参与空投"
-              description="连接您的钱包以参与空投活动并领取奖励"
-            />
-          </div>
-        )}
+              <div className="flex justify-center">
+                <div className="bg-white/10 rounded-3xl p-1 flex">
+                  <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                    所有池子
+                  </button>
+                  <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
+                    我的池子
+                  </button>
+                </div>
+              </div>
+
+              <EmptyState connectWallet={connectWallet}
+                icon="💧"
+                title="连接钱包开始提供流动性"
+                description="连接您的钱包以添加流动性并赚取手续费"
+              />
+            </div>
+          )}
+
+          {/* 质押界面 */}
+          {activeTab === 'mining' && (
+            <div className="space-y-8">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold neon-text mb-2">质押挖矿</h1>
+                <p className="text-gray-400 text-lg">质押您的代币，获得丰厚奖励</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatCard title="总质押价值" value={stats.totalStaked} change="+12.5% 本月" />
+                <StatCard title="累计奖励" value={stats.rewards} change="+$5.67 本日" />
+                <StatCard title="平均APY" value={`${stats.apy}%`} change="年化收益" />
+              </div>
+
+              <EmptyState connectWallet={connectWallet}
+                icon="🔒"
+                title="连接钱包开始质押"
+                description="连接您的钱包以查看和管理质押"
+              />
+            </div>
+          )}
+
+          {/* 空投界面 */}
+          {activeTab === 'rewards' && (
+            <div className="space-y-8">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold neon-text mb-2">空投奖励</h1>
+                <p className="text-gray-400 text-lg">参与活动，获得免费代币奖励</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatCard title="总奖励" value="750 CSWAP" change="+150 CSWAP 本周" gradient="from-cyan-400 to-blue-500" />
+                <StatCard title="已奖励" value="320 CSWAP" change="价值 ~$320" gradient="from-green-400 to-emerald-500" />
+                <StatCard title="待领取" value="400 CSWAP" change="价值 ~$400" gradient="from-purple-400 to-pink-500" />
+              </div>
+
+              <div className="flex justify-center mb-8">
+                <div className="bg-white/10 rounded-3xl p-1 flex">
+                  <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                    空投活动
+                  </button>
+                  <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
+                    任务中心
+                  </button>
+                </div>
+              </div>
+
+              <EmptyState connectWallet={connectWallet}
+                icon="🎁"
+                title="连接钱包参与空投"
+                description="连接您的钱包以参与空投活动并领取奖励"
+              />
+            </div>
+          )}
+
+        </main>
       </div>
 
       {/* 品牌标识 */}

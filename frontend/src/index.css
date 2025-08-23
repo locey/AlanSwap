@@ -10,3 +10,71 @@
 .card {
   @apply rounded-2xl border border-gray-200 bg-white p-6 shadow-sm;
 }
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+      transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: 8s linear infinite spin-slow;
+}
+
+@keyframes pulse-glow {
+  0% {
+    opacity: .8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+.animate-pulse-glow {
+  animation: 2s ease-in-out infinite alternate pulse-glow;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+      transform: translateY(-5px);
+  }
+  50% {
+      transform: translateY(-10px);
+  }
+  75% {
+      transform: translateY(-5px);
+  }
+}
+
+.animate-float-slow {
+  animation: 8s ease-in-out infinite float-slow;
+}
+
+.neon-text {
+  color: #00d4ff;
+  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff, 0 0 20px #00d4ff;
+}
+.neon-text-enhanced {
+  color: #00d4ff;
+  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff, 0 0 20px #00d4ff, 0 0 35px #00d4ff, 0 0 40px #00d4ff;
+  animation: 2s ease-in-out infinite alternate neon-flicker;
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+      transform: translateY(-10px);
+  }
+}
+.animate-bounce-slow {
+  animation: 3s ease-in-out infinite bounce-slow;
+}
