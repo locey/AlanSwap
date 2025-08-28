@@ -27,7 +27,7 @@ describe("Stake", function () {
         console.log("Addr1 address:", addr1.address);
         console.log("Addr2 address:", addr2.address);
 
-        const erc20Test = await ethers.getContractFactory("erc20Test");
+        const erc20Test = await ethers.getContractFactory("Erc20Test");
         erc20 = await erc20Test.deploy();
         await erc20.waitForDeployment();
         erc20Address = await erc20.getAddress()
