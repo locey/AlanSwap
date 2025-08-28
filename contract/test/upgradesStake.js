@@ -22,6 +22,8 @@ describe("Stake Upgradeability", function () {
         await stake.waitForDeployment();
         const stakeAddress = await stake.getAddress();
         console.log("StakeProxy deployed to:", stakeAddress);//代理地址
+        const stakeImplementationAddress = await upgrades.erc1967.getImplementationAddress(stakeAddress);
+        console.log("Stake implementation deployed to:", stakeImplementationAddress);
     });
     
     it("should upgrade the contract and retain state", async function () {
@@ -36,14 +38,15 @@ describe("Stake Upgradeability", function () {
         console.log("Initial pools:", pools_);
         assert.equal(pools_.length,0);
 
-    
+        
         // Upgrade the contract
         const StakeV2 = await ethers.getContractFactory("StakeV2");
         stakeV2 = await upgrades.upgradeProxy(stake, StakeV2);
         await stakeV2.waitForDeployment();
         const upgradedAddress = await stakeV2.getAddress();//打印升级之后的代理地址
         console.log("Stake upgraded to:", upgradedAddress);
-    
+        const stakeImplementationAddress = await upgrades.erc1967.getImplementationAddress(upgradedAddress);
+        console.log("StakeV2 implementation deployed to:", stakeImplementationAddress);
         // Verify the address remains the same
         expect(upgradedAddress).to.equal(await stake.getAddress());//验证两个代理地址是否相同
     
