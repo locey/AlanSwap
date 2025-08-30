@@ -53,7 +53,7 @@ describe("Stake", function () {
         before("addr1 deposit Eth", async function () {
             //新增eth池子
             const proxyAddress = await stakeProxy.getAddress();
-            await stakeProxy.addPool("ETH height", ethers.ZeroAddress, 86400, mockAggregator.target);//锁定一天
+            await stakeProxy.addPool("ETH height", ethers.ZeroAddress, 86400, mockAggregator.target, 1000,1);//锁定一天
             const pools = await stakeProxy.getPools();
             //使用本身的eth进行质押
             addr1EthBalanceBefore = await ethers.provider.getBalance(addr1.address);
@@ -83,7 +83,7 @@ describe("Stake", function () {
                 const currentTimeAfter = await time.latest();
                 console.log("Current block timestamp after time increase:", currentTimeAfter);
                 //设置每日shareprice
-                await stakeProxy.setDailySharePrice(currentTimeAfter, 1100);//上涨10%
+                await stakeProxy.setDailySharePrice(0,currentTimeAfter, 1100);//上涨10%
             });
             it("check addr1 balance after withdraw", async function () {
                 const addr1Balance = await ethers.provider.getBalance(addr1.address);
@@ -100,7 +100,7 @@ describe("Stake", function () {
                 //withdrawBalance.mul().div()
                 const reward = withdrawBalance * (1100n - 1000n) / 1000n;                       //计算奖励
                 console.log("计算奖励为：",reward)
-                const total = addr1Balance + withdrawBalance - withdrawGasCost + reward - claimGasCost;
+                const total = addr1Balance + withdrawBalance - withdrawGasCost + reward - claimGasCost - reward * 1n / 100n;
                 console.log("计算出来的金额为",total)
                 const balance = await ethers.provider.getBalance(addr1.address);//这是查询出来的最后金额
                 console.log("----",balance);
@@ -114,7 +114,7 @@ describe("Stake", function () {
             console.log("--------------------------------------------")
             //新增eth池子
             const proxyAddress = await stakeProxy.getAddress();
-            await stakeProxy.addPool("erc20 height", erc20Address, 86400, mockAggregator.target);//锁定一天
+            await stakeProxy.addPool("erc20 height", erc20Address, 86400, mockAggregator.target,1000,1);//锁定一天
             pools = await stakeProxy.getPools();
             //使用本身的eth进行质押
             addr1Eth20Before = await erc20.balanceOf(addr1.address);
@@ -143,7 +143,7 @@ describe("Stake", function () {
                 const currentTimeAfter = await time.latest();
                 console.log("Current block timestamp after time increase:", currentTimeAfter);
                 //设置每日shareprice
-                await stakeProxy.setDailySharePrice(currentTimeAfter, 1200);//上涨10%
+                await stakeProxy.setDailySharePrice(pools.length - 1,currentTimeAfter, 1200);//上涨10%
             });
             it("check addr1 balance after withdraw erc20", async function () {
                 const addr1Balance = await erc20.balanceOf(addr1.address);
@@ -162,7 +162,7 @@ describe("Stake", function () {
                 //这里值，应该获取，不应写死
                 const reward = withdrawBalance * (1200n - 1100n) / 1100n;                       //计算奖励
                 console.log("计算奖励为：",reward)
-                const total = addr1Balance + withdrawBalance + reward;
+                const total = addr1Balance + withdrawBalance + reward - reward * 1n / 100n;
                 console.log("计算出来的金额为",total)
                 const balance = await erc20.balanceOf(addr1.address);//这是查询出来的最后金额
                 console.log("----",balance);
