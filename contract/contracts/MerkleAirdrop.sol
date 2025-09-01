@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import "./AirdropRewardPool.sol";
-import "./CSWAPToken.sol";
+
 
 /**
  * @title MerkleAirdrop
@@ -21,9 +21,6 @@ contract MerkleAirdrop is
 {
     // 关联的中央奖励池
     AirdropRewardPool public rewardPool;
-
-    // 奖励代币（从奖励池同步，避免重复存储）
-    CSWAPToken public rewardToken;
 
     // 空投活动结构体
     struct Airdrop {
@@ -77,7 +74,6 @@ contract MerkleAirdrop is
 
         // 关联奖励池并同步奖励代币
         rewardPool = AirdropRewardPool(_rewardPool);
-        rewardToken = rewardPool.rewardToken();
         // 确保奖励池已授权当前合约（避免初始化后无法发放奖励）
         // require(
         //     rewardPool.authorizedAirdrops(address(this)),
@@ -89,23 +85,6 @@ contract MerkleAirdrop is
     // 👇 必须添加的辅助函数：计算叶子节点哈希（与 claimReward 中逻辑一致）
     function calculateLeafHash(address user, uint256 amount) external pure returns (bytes32) {
         return keccak256(abi.encodePacked(user, amount));
-    }
-
-    /**
-    @dev 更新中央奖励池（仅所有者，支持未来更换奖励池）
-    @param _newRewardPool 新奖励池地址
-    */
-    function updateRewardPool(address _newRewardPool) external onlyOwner {
-        require(_newRewardPool != address(0), "Invalid new pool address");
-        require(_newRewardPool != address(rewardPool), "Same as current pool");
-        require(
-            AirdropRewardPool(_newRewardPool).authorizedAirdrops(address(this)),
-            "New pool not authorized"
-        );
-        address oldPool = address(rewardPool);
-        rewardPool = AirdropRewardPool(_newRewardPool);
-        rewardToken = rewardPool.rewardToken(); // 同步新池的代币
-        emit RewardPoolUpdated(oldPool, _newRewardPool);
     }
 
     /**
@@ -245,18 +224,6 @@ contract MerkleAirdrop is
             airdrop.endTime,
             airdrop.isActive
         );
-    }
-    /**
-     * @dev 管理员补充奖励（当合约余额不足时）
-     */
-    function fundAirdrop(uint256 amount) external {
-        require(amount > 0, "Amount must be positive");
-        bool success = rewardToken.transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-        require(success, "Transfer failed");
     }
 
     /**

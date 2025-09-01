@@ -32,11 +32,6 @@ contract AirdropRewardPool is
     event TokensDeposited(address indexed depositor, uint256 amount);
 
 
-    // constructor() {
-    //     _disableInitializers();
-    // }
-
-
     function initialize(address _rewardToken) external initializer {
         __Ownable_init();
         __ReentrancyGuard_init();
