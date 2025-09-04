@@ -149,9 +149,8 @@ const CryptoSwapDEX = () => {
       <BackgroundStars />
       <NotificationContainer notifications={notifications} />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-6">
         {/* 头部导航 */}
-        <header className="flex flex-col lg:flex-row justify-between items-center mb-8">
+        <header className="flex flex-col lg:flex-row justify-between items-center mb-4 bg-black p-2">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center animate-pulse-glow">
               <span className="text-white font-bold animate-spin-slow">⚡</span>
@@ -168,7 +167,7 @@ const CryptoSwapDEX = () => {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-6 py-3 rounded-2xl font-medium transition-all duration-200 flex items-center gap-2 ${
+                className={`px-2 py-1 rounded-2xl font-medium transition-all duration-200 flex items-center gap-2 ${
                   activeTab === tab.key
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-white/10'
@@ -181,13 +180,13 @@ const CryptoSwapDEX = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center bg-green-500/20 border border-green-500/50 rounded-2xl px-4 py-2 text-sm">
+            <div className="flex items-center bg-green-500/20 border border-green-500/50 rounded-2xl px-2 py-1 text-sm">
               <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
               <span>Ethereum</span>
             </div>
             <button
               onClick={connectWallet}
-              className={`font-semibold px-6 py-3 rounded-2xl transition-all duration-200 ${
+              className={`font-semibold px-2 py-1 rounded-2xl transition-all duration-200 ${
                 walletConnected
                   ? 'bg-green-500/20 border border-green-500/50 text-green-400'
                   : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:-translate-y-1'
@@ -197,13 +196,14 @@ const CryptoSwapDEX = () => {
             </button>
           </div>
         </header>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-6">
 
         <main className='relative z-10'>
           {/* 交换界面 */}
           {activeTab === 'swap' && (
             <div className="w-full max-w-md mx-auto">
             {/* 交换卡片 */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl">
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl animate-scale-in">
               {/* 标题和设置 */}
               <div className="flex items-center justify-between mb-6">
                 <div data-slot="card-title" className="text-xl font-bold neon-text-enhanced">交换</div>
@@ -238,14 +238,12 @@ const CryptoSwapDEX = () => {
                       value={fromAmount}
                       onChange={(e) => handleFromAmountChange(e.target.value)}
                       placeholder="0.0"
-                      className="flex-1 bg-transparent text-white text-right text-xl font-semibold focus:outline-none"
+                      className="flex-1 bg-gray-700 py-1 rounded-xl text-white text-right text-xl font-semibold focus:outline-none"
                     />
-                    <button 
+                    {/* <button 
                       onClick={handleMaxClick}
                       className="text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-cyan-400/10 px-2 py-1 rounded"
-                    >
-                      MAX
-                    </button>
+                    >MAX</button> */}
                   </div>
                 </div>
               </div>
@@ -286,7 +284,7 @@ const CryptoSwapDEX = () => {
                       value={toAmount}
                       readOnly
                       placeholder="0.0"
-                      className="flex-1 bg-transparent text-white text-right text-xl font-semibold focus:outline-none"
+                      className="flex-1 bg-gray-700 py-1 rounded-xl text-white text-right text-xl font-semibold focus:outline-none"
                     />
                   </div>
                 </div>
@@ -326,8 +324,8 @@ const CryptoSwapDEX = () => {
             </div>
       
             {/* 市场趋势卡片 */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl mt-6">
-              <h3 className="text-lg font-semibold text-white mb-4">市场趋势</h3>
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl mt-6 animate-scale-in">
+              <h3 className="text-lg font-semibold text-white mb-4">市场概览</h3>
               <div className="grid grid-cols-2 gap-4">
                 {tokens.slice(0, 4).map((token, index) => (
                   <div key={token.symbol} className="bg-slate-800/50 rounded-lg p-3">
@@ -362,10 +360,10 @@ const CryptoSwapDEX = () => {
 
               <div className="flex justify-center">
                 <div className="bg-white/10 rounded-3xl p-1 flex">
-                  <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                  <button className="px-6 py-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
                     所有池子
                   </button>
-                  <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
+                  <button className="px-6 py-1 text-gray-300 hover:text-white rounded-2xl font-medium">
                     我的池子
                   </button>
                 </div>
@@ -417,10 +415,10 @@ const CryptoSwapDEX = () => {
 
               <div className="flex justify-center mb-8">
                 <div className="bg-white/10 rounded-3xl p-1 flex">
-                  <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                  <button className="px-6 py-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
                     空投活动
                   </button>
-                  <button className="px-6 py-3 text-gray-300 hover:text-white rounded-2xl font-medium">
+                  <button className="px-6 py-1 text-gray-300 hover:text-white rounded-2xl font-medium">
                     任务中心
                   </button>
                 </div>
