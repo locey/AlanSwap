@@ -4,7 +4,10 @@ import NotificationContainer from './NotificationContainer';
 import StatCard from './StatCard';
 import EmptyState from './EmptyState';
 import { ArrowUpDown, Settings, Info } from './Icons';
-
+import PoolCard from './PoolCard';
+import GlowCard from './GlowCard';
+import StakeCard from './StakeCard';
+import RewardCard from './RewardCard';
 
 const CryptoSwapDEX = () => {
   const [activeTab, setActiveTab] = useState('swap');
@@ -26,9 +29,9 @@ const CryptoSwapDEX = () => {
 
   const tokens = [
     { symbol: 'ETH', name: 'Ethereum', balance: 12.345, icon: '🔹' },
-    { symbol: 'USDC', name: 'USD Coin', balance: 1250.00, icon: '💎' },
-    { symbol: 'BTC', name: 'Bitcoin', balance: 0.5678, icon: '🟡' },
-    { symbol: 'USDT', name: 'Tether', balance: 500.00, icon: '💚' }
+    { symbol: 'WBTC', name: 'Bitcoin', balance: 0.5678, icon: '₿' },
+    { symbol: 'USDC', name: 'USD Coin', balance: 1250.00, icon: '💵' },
+    { symbol: 'USDT', name: 'Tether', balance: 500.00, icon: '💰' }
   ];
 
   const getTokenData = (symbol) => {
@@ -97,6 +100,8 @@ const CryptoSwapDEX = () => {
     if (!walletConnected) {
       setWalletConnected(true);
       showNotification('钱包连接成功！', 'success');
+    } else {
+      setWalletConnected(false);
     }
   };
 
@@ -207,9 +212,7 @@ const CryptoSwapDEX = () => {
               {/* 标题和设置 */}
               <div className="flex items-center justify-between mb-6">
                 <div data-slot="card-title" className="text-xl font-bold neon-text-enhanced">交换</div>
-                <button className="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700/70 transition-all">
-                  <Settings className="w-4 h-4 text-slate-300" />
-                </button>
+                <button className="p-1 rounded-lg bg-slate-700/50 hover:bg-slate-700/70 transition-all">最优路径</button>
               </div>
       
               {/* 从 Token */}
@@ -291,7 +294,7 @@ const CryptoSwapDEX = () => {
               </div>
       
               {/* 交换信息 */}
-              <div className="bg-slate-800/30 rounded-xl p-4 mb-6 border border-slate-700/20">
+              {fromAmount && (<div className="bg-slate-800/30 rounded-xl p-4 mb-6 border border-slate-700/20">
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">汇率</span>
                   <span className="text-white">1 {fromToken} ≈ {exchangeRate.toLocaleString()} {toToken}</span>
@@ -304,23 +307,15 @@ const CryptoSwapDEX = () => {
                   <span className="text-slate-400">手续费</span>
                   <span className="text-white">~0.003 ETH</span>
                 </div>
-              </div>
+              </div>)}
       
               {/* 交换按钮 */}
               <button 
-                disabled={!fromAmount || parseFloat(fromAmount) === 0}
+                disabled={!walletConnected || !fromAmount || parseFloat(fromAmount) === 0}
                 className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:cursor-not-allowed"
               >
-                {!fromAmount || parseFloat(fromAmount) === 0 ? '请先连接钱包' : '确认交换'}
+                { !walletConnected ? '请先连接钱包' : (!fromAmount || parseFloat(fromAmount) === 0 ? '输入金额' : '交换')}
               </button>
-      
-              {/* 提示信息 */}
-              <div className="flex items-center gap-2 mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                <Info className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                <p className="text-xs text-blue-300">
-                  交换前请确认代币地址和数量，交易一旦确认无法撤销
-                </p>
-              </div>
             </div>
       
             {/* 市场趋势卡片 */}
@@ -369,11 +364,50 @@ const CryptoSwapDEX = () => {
                 </div>
               </div>
 
-              <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={connectWallet}
                 icon="💧"
                 title="连接钱包开始提供流动性"
                 description="连接您的钱包以添加流动性并赚取手续费"
-              />
+              /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
+                <PoolCard pair="ETH/USDC" tvl="$5.8M" vol="$1.2M" fee="0.05%" apy="24.5%" hasForm badge={'🔷💵'} />
+                <PoolCard pair="WBTC/ETH" tvl="$3.2M" vol="$890K" fee="0%" apy="18.7%" badge={'₿🔷'} />
+                <PoolCard pair="UNI/USDC" tvl="$1.8M" vol="$450K" fee="0%" apy="12.1%" badge={'🦄💵'} />
+                <PoolCard pair="LINK/ETH" tvl="$980K" vol="$230K" fee="0%" apy="20.1%" badge={'🔗🔷'} />
+              </div>)}
+              {walletConnected && (<GlowCard>
+                  <h3 className="mt-2 ml-6">流动性统计</h3>
+                  <div className="p-5 grid md:grid-cols-2 gap-6 text-sm">
+                    <div>
+                      <div className="text-white/70 mb-2">收益分布</div>
+                      <div className="space-y-2">
+                        {[
+                          { k: "ETH", v: "$2,890.50", c: "+2.45%" },
+                          { k: "ETH/USDC", v: "$1.2M", c: "24h 交易量" },
+                        ].map((i) => (
+                          <div key={i.k} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                            <div className="text-white/70">{i.k}</div>
+                            <div className="text-white/90">{i.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-white/70 mb-2">池子表现</div>
+                      <div className="space-y-2">
+                        {[
+                          { k: "ETH", v: "1.2345 ETH" },
+                          { k: "USDC", v: "1250.00 USDC" },
+                          { k: "UNI", v: "45.67 UNI" },
+                        ].map((i) => (
+                          <div key={i.k} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                            <div className="text-white/70">{i.k} 池</div>
+                            <div className="text-white/90">{i.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </GlowCard>)}
             </div>
           )}
 
@@ -391,11 +425,50 @@ const CryptoSwapDEX = () => {
                 <StatCard title="平均APY" value={`${stats.apy}%`} change="年化收益" />
               </div>
 
-              <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={connectWallet}
                 icon="🔒"
                 title="连接钱包开始质押"
                 description="连接您的钱包以查看和管理质押"
-              />
+              /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
+              <StakeCard title="ETH 质押池" token="ETH" tvl="$2.4M" days="30天" apy="12.5%" deposited="1.2345 ETH" badge={'🔷'} />
+              <StakeCard title="USDC 稳定池" token="USDC" tvl="$5.8M" days="7天" apy="8.2%" badge={'💵'} />
+              <StakeCard title="UNI 治理代币池" token="UNI" tvl="$890K" days="90天" apy="18.7%" badge={'🦄'} />
+              <StakeCard title="LINK 预言机池" token="LINK" tvl="$1.2M" days="60天" apy="15.3%" badge={'🔗'} />
+            </div>) }
+            {walletConnected && (<GlowCard>
+              <div className="p-5 grid md:grid-cols-2 gap-6 text-sm">
+                <div>
+                  <div className="text-white/70 mb-2">收益分布</div>
+                  <div className="space-y-2">
+                    {[
+                      { k: "ETH", v: "0.0234 ETH", c: "+12.5%" },
+                      { k: "USDC", v: "12.45 USDC", c: "+3.2%" },
+                      { k: "UNI", v: "2.34 UNI", c: "+18.7%" },
+                    ].map((i) => (
+                      <div key={i.k} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                        <div className="text-white/80 flex items-center gap-2">{i.k}</div>
+                        <div className="text-white/90">{i.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-white/70 mb-2">限期对照</div>
+                  <div className="space-y-2">
+                    {[
+                      { k: "ETH 池", v: "1.2345 ETH" },
+                      { k: "USDC 池", v: "1250.00 USDC" },
+                      { k: "UNI 池", v: "45.67 UNI" },
+                    ].map((i) => (
+                      <div key={i.k} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                        <div className="text-white/70">{i.k}</div>
+                        <div className="text-white/90">{i.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </GlowCard>)}
             </div>
           )}
 
@@ -424,11 +497,35 @@ const CryptoSwapDEX = () => {
                 </div>
               </div>
 
-              <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={connectWallet}
                 icon="🎁"
                 title="连接钱包参与空投"
                 description="连接您的钱包以参与空投活动并领取奖励"
-              />
+              /> : (<div className="grid lg:grid-cols-2 gap-6">
+                <RewardCard title="CryptoSwap Genesis 空投" subtitle="庆祝 CryptoSwap 主网上线，向早期用户空投治理代币" reward="250 CSWAP" deadline="2024-12-31" badge={'🚀'} />
+                <RewardCard title="流动性提供者奖励" subtitle="奖励活跃的流动性提供者，促进协议发展" reward="150 CSWAP" deadline="2024-11-30" badge={'💧'} />
+                <RewardCard title="社区建设者计划" subtitle="奖励为社区做出贡献的用户" reward="0 CSWAP" deadline="2025-01-15" badge={'🌟'} />
+                <RewardCard title="质押奖励计划" subtitle="已完成的质押奖励活动" reward="320 CSWAP" locked deadline="2024-09-30" badge={'🔒'} />
+              </div>)}
+              {walletConnected && (<GlowCard>
+                <div className="p-5">
+                  <div className="text-white/80 font-medium mb-3">空投排行榜</div>
+                  <div className="divide-y divide-white/10 space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">🥇</div>
+                          <div className="flex flex-col">
+                            <div className="font-semibold text-gray-6300">#{i}</div>
+                            <div className='text-sm text-muted-foreground text-gray-500'>0x1234...5678</div>
+                          </div>
+                        </div>
+                        <div className="font-semibold text-green-400">{[1250, 980, 750, 720, 650][i - 1]} CSWAP</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </GlowCard>)}
             </div>
           )}
 
