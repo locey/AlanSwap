@@ -24,7 +24,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 //引入oracle接口
 import "./lib/DataFeed.sol";
 
-contract Stake is ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
+contract StakeV2 is ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
     //设置升级管理员
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");

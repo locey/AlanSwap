@@ -21,8 +21,8 @@ async function main() {
     const stakeImplementationAddress = await hre.upgrades.erc1967.getImplementationAddress(stakeProxyAddress);
     console.log("Stake implementation deployed to:", stakeImplementationAddress);
 
-    const adminRole = await stake.ADMIN_ROLE(); // 获取 ADMIN_ROLE 的哈希值
-    const isAdmin = await stake.hasRole(adminRole, deployer.address);
+    const adminRole = await stakeProxy.ADMIN_ROLE(); // 获取 ADMIN_ROLE 的哈希值
+    const isAdmin = await stakeProxy.hasRole(adminRole, deployer.address);
     console.log("Deployer is admin:", isAdmin); // 应输出 true
 }
 // We recommend this pattern to be able to use async/await everywhere
