@@ -18,7 +18,7 @@ const CryptoSwapDEX = () => {
   const [toToken, setToToken] = useState('USDC');
   const [isSwapping, setIsSwapping] = useState(false);
   const [notifications, setNotifications] = useState([]);
-
+  
   //add swapSection--yy3
   // const [fromToken, setFromToken] = useState('ETH');
   // const [toToken, setToToken] = useState('USDC');
@@ -26,25 +26,33 @@ const CryptoSwapDEX = () => {
   // const [toAmount, setToAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState(1250.00);
   const [slippage, setSlippage] = useState('0.5');
-
+  
   const tokens = [
     { symbol: 'ETH', name: 'Ethereum', balance: 12.345, icon: '🔹' },
     { symbol: 'WBTC', name: 'Bitcoin', balance: 0.5678, icon: '₿' },
     { symbol: 'USDC', name: 'USD Coin', balance: 1250.00, icon: '💵' },
     { symbol: 'USDT', name: 'Tether', balance: 500.00, icon: '💰' }
   ];
-
+  
   const getTokenData = (symbol) => {
     return tokens.find(token => token.symbol === symbol);
   };
-
+  
+  const [currentPool, setCurrentPool] = useState('allPool');
+  const togglePoolClick = (cPool) => {
+    setCurrentPool(cPool);
+  }
+  const [currentDropType, setCurrentDropType] = useState('airdrop');
+  const toggleDropClick = (cType) => {
+    setCurrentDropType(cType);
+  }
   const handleSwapTokens = () => {
     setFromToken(toToken);
     setToToken(fromToken);
     setFromAmount(toAmount);
     setToAmount(fromAmount);
   };
-
+  
   const handleFromAmountChange = (value) => {
     setFromAmount(value);
     if (value && !isNaN(value)) {
@@ -355,19 +363,20 @@ const CryptoSwapDEX = () => {
 
               <div className="flex justify-center">
                 <div className="bg-white/10 rounded-3xl p-1 flex">
-                  <button className="px-6 py-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                  <button className={`px-6 py-1 rounded-2xl font-medium hover:text-white ${currentPool==='allPool' ?'bg-gradient-to-r from-blue-600 to-purple-600' :''} `} onClick={() => togglePoolClick('allPool')}>
                     所有池子
                   </button>
-                  <button className="px-6 py-1 text-gray-300 hover:text-white rounded-2xl font-medium">
+                  <button className={`px-6 py-1 rounded-2xl font-medium hover:text-white ${currentPool==='myPool' ?'bg-gradient-to-r from-blue-600 to-purple-600' :''} `} onClick={() => togglePoolClick('myPool')}>我的池子</button>
+                  {/* <button className="px-6 py-1 text-gray-300 hover:text-white rounded-2xl font-medium" onClick={() => togglePoolClick('mylPool')}>
                     我的池子
-                  </button>
+                  </button> */}
                 </div>
               </div>
 
               {!walletConnected ? <EmptyState connectWallet={connectWallet}
                 icon="💧"
-                title="连接钱包开始提供流动性"
-                description="连接您的钱包以添加流动性并赚取手续费"
+                title={currentPool==="allPool" ? "连接钱包开始提供流动性" : "连接钱包查看您的流动性"}
+                description={currentPool==="allPool" ? "连接您的钱包以添加流动性并赚取手续费" : "连接钱包以查看和管理您的流动性池"}
               /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
                 <PoolCard pair="ETH/USDC" tvl="$5.8M" vol="$1.2M" fee="0.05%" apy="24.5%" hasForm badge={'🔷💵'} />
                 <PoolCard pair="WBTC/ETH" tvl="$3.2M" vol="$890K" fee="0%" apy="18.7%" badge={'₿🔷'} />
@@ -482,16 +491,16 @@ const CryptoSwapDEX = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <StatCard title="总奖励" value="750 CSWAP" change="+150 CSWAP 本周" gradient="from-cyan-400 to-blue-500" />
-                <StatCard title="已奖励" value="320 CSWAP" change="价值 ~$320" gradient="from-green-400 to-emerald-500" />
+                <StatCard title="已领取" value="320 CSWAP" change="价值 ~$320" gradient="from-green-400 to-emerald-500" />
                 <StatCard title="待领取" value="400 CSWAP" change="价值 ~$400" gradient="from-purple-400 to-pink-500" />
               </div>
 
               <div className="flex justify-center mb-8">
                 <div className="bg-white/10 rounded-3xl p-1 flex">
-                  <button className="px-6 py-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-medium">
+                  <button className={`px-6 py-1 rounded-2xl font-medium hover:text-white ${currentDropType==='airdrop' ?'bg-gradient-to-r from-blue-600 to-purple-600' :''} `} onClick={() => toggleDropClick('airdrop')}>
                     空投活动
                   </button>
-                  <button className="px-6 py-1 text-gray-300 hover:text-white rounded-2xl font-medium">
+                  <button className={`px-6 py-1 rounded-2xl font-medium hover:text-white ${currentDropType==='dropTask' ?'bg-gradient-to-r from-blue-600 to-purple-600' :''} `} onClick={() => toggleDropClick('dropTask')}>
                     任务中心
                   </button>
                 </div>
@@ -499,8 +508,8 @@ const CryptoSwapDEX = () => {
 
               {!walletConnected ? <EmptyState connectWallet={connectWallet}
                 icon="🎁"
-                title="连接钱包参与空投"
-                description="连接您的钱包以参与空投活动并领取奖励"
+                title={currentDropType==='airdrop' ? "连接钱包参与空投" : "连接钱包开始任务"}
+                description={currentDropType==='airdrop' ? "连接您的钱包以参与空投活动并领取奖励" :"连接钱包以完成任务并获得奖励"}
               /> : (<div className="grid lg:grid-cols-2 gap-6">
                 <RewardCard title="CryptoSwap Genesis 空投" subtitle="庆祝 CryptoSwap 主网上线，向早期用户空投治理代币" reward="250 CSWAP" deadline="2024-12-31" badge={'🚀'} />
                 <RewardCard title="流动性提供者奖励" subtitle="奖励活跃的流动性提供者，促进协议发展" reward="150 CSWAP" deadline="2024-11-30" badge={'💧'} />
