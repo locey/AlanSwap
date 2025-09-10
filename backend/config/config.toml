@@ -1,0 +1,33 @@
+[app]
+name = "bossfi"
+port = 8000
+version = "v1"
+
+[pgsql]
+host = "localhost"
+port = "5432"
+database = "bossfi"
+username = "bossfi"
+password = "bossfi"
+
+[redis]
+host = "localhost"
+port = "6379"
+db = 1
+password = ""
+max_idle = 10
+max_active = 0
+idle_timeout = 180
+
+[[chains]]
+name = "sepolia"
+chain_id = 11155111
+endpoint = "https://sepolia.infura.io/v3/xxx"
+[[chains]]
+name = "mainnet"
+chain_id = 1
+endpoint = "https://sepolia.infura.io/v3/xxx"
+
+[monitor]
+pprof_enable = true
+pprof_port = 6060
