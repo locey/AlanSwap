@@ -16,9 +16,11 @@ type Config struct {
 	Chains  []ChainConfig
 }
 type AppConfig struct {
-	Name    string `toml:"name" json:"name"`
-	Port    string `toml:"port" json:"port"`
-	Version string `toml:"version" json:"version"`
+	Name      string `toml:"name" json:"name"`
+	APIPort   string `toml:"apiPort" json:"apiPort"`
+	Port      string `toml:"port" json:"port"`
+	Version   string `toml:"version" json:"version"`
+	JwtSecret string `toml:"jwtSecret" json:"jwtSecret"` //添加jwt秘钥配置
 }
 
 type MonitorConfig struct {

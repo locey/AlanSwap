@@ -1,7 +1,9 @@
 [app]
 name = "bossfi"
-port = 8000
+prot=8000
+apiPort = 8100
 version = "v1"
+jwtSecret = "xxx"
 
 [pgsql]
 host = "localhost"

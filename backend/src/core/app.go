@@ -14,7 +14,12 @@ import (
 	"net/http"
 )
 
-func Start(configFile string) {
+// Start
+//
+//	@Description:
+//	@param configFile
+//	@param serverType  为了简单区分不同的服务类型，1 代表 api服务  2 代表监听服务
+func Start(configFile string, serverType int) {
 	c, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// 初始化配置信息
@@ -27,12 +32,17 @@ func Start(configFile string) {
 	initDB()
 	// 初始化区块链客户端
 	initChainClient()
-	// 初始化Gin
-	initGin()
-	//开启线程获取scan log
-	initSync(c)
-	//计算积分
-	initComputeIntegral()
+
+	if serverType == 1 {
+		initApiGin()
+	} else if serverType == 2 {
+		// 初始化Gin
+		initGin()
+		//开启线程获取scan log
+		initSync(c)
+		//计算积分
+		initComputeIntegral()
+	}
 }
 func initConfig(configFile string) {
 	ctx.Ctx.Config = config.InitConfig(configFile)
@@ -80,6 +90,17 @@ func initGin() {
 		panic(err)
 	}
 }
+
+func initApiGin() {
+	r := router.InitRouter()
+	ctx.Ctx.Gin = r
+	router.Bind(r, &ctx.Ctx)
+	err := r.Run(":" + ctx.Ctx.Config.App.APIPort)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func initSync(c context.Context) {
 	sync.StartSync(c)
 }

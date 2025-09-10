@@ -8,5 +8,5 @@ const (
 )
 
 func main() {
-	core.Start(ConfigFile)
+	core.Start(ConfigFile, 2)
 }
