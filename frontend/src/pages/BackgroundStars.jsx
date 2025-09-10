@@ -13,9 +13,9 @@ const BackgroundStars = () => {
           id: i,
           x: Math.random() * 100,
           y: Math.random() * 100,
-          size: Math.random() * 4 + 1,
+          size: Math.random() * 2 + 1,
           opacity: Math.random() * 0.8 + 0.2,
-          speed: Math.random() * 2 + 0.5,
+          speed: Math.random() * 1 + 0.5,
           delay: Math.random() * 5,
         });
       }
