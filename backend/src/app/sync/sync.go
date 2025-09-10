@@ -46,9 +46,10 @@ func StartSync(c context.Context) {
 			fmt.Println(lastBlockNum)
 
 			// Staked事件的topic hash
-			stakedTopic := crypto.Keccak256Hash([]byte("Staked(address,uint256,uint256,uint256,uint256)")).Hex()
+			// 修改:更新stakedTopic日志格式
+			stakedTopic := crypto.Keccak256Hash([]byte("Staked(address,uint256,address,uint256,uint256,uint256)")).Hex()
 			// Withdrawn事件的topic hash
-			withdrawnTopic := crypto.Keccak256Hash([]byte("Withdrawn(address,uint256,uint256,uint256)")).Hex()
+			withdrawnTopic := crypto.Keccak256Hash([]byte("Withdrawn(address,uint256,address,uint256,uint256)")).Hex()
 
 			// 开启定时任务，每12秒执行一次
 			ticker := time.NewTicker(12 * time.Second)
@@ -74,7 +75,7 @@ func StartSync(c context.Context) {
 							zap.Uint64("current_block", currentBlock))
 						continue
 					}
-					// TODO: 查询eth链上日志的逻辑
+					log.Logger.Info("开始监听log日志", zap.Int64("form_block", lastBlockNum), zap.Int64("to_block", targetBlockNum))
 					// 这里需要实现具体的日志查询逻辑
 					logs, err := evmClient.GetFilterLogs(big.NewInt(lastBlockNum), big.NewInt(targetBlockNum), chain.Address)
 					if err != nil {
@@ -106,12 +107,16 @@ func StartSync(c context.Context) {
 						topic0 := vLog.Topics[0].Hex()
 						switch topic0 {
 						case stakedTopic:
-							if len(vLog.Topics) >= 3 && len(vLog.Data) >= 96 {
+							// 修改:更新日志解析逻辑以匹配新的事件格式
+							if len(vLog.Topics) >= 4 && len(vLog.Data) >= 96 {
 								// user在topics[1]中 (indexed)
 								user := common.BytesToAddress(vLog.Topics[1].Bytes()).Hex()
 
 								// poolId在topics[2]中 (indexed)
 								poolId := new(big.Int).SetBytes(common.TrimLeftZeroes(vLog.Topics[2].Bytes()))
+
+								// tokenAddress在topics[3]中 (indexed)
+								tokenAddress := common.BytesToAddress(vLog.Topics[3].Bytes()).Hex()
 
 								// amount, stakedAt, unlockTime在data中
 								data := vLog.Data
@@ -122,9 +127,10 @@ func StartSync(c context.Context) {
 								// 创建质押记录并保存到数据库
 								userOperationRecord := model.UserOperationRecord{
 									ChainId:       int64(chainId),
-									User:          user,
-									PoolId:        poolId.String(),
-									Amount:        amount.String(),
+									Address:       user,
+									PoolId:        poolId.Int64(), // 修改:将big.Int转换为int64
+									TokenAddress:  tokenAddress,
+									Amount:        amount.Int64(),
 									OperationTime: stakedAt.Int64(),
 									UnlockTime:    unlockTime.Int64(),
 									TxHash:        vLog.TxHash.Hex(),
@@ -134,12 +140,15 @@ func StartSync(c context.Context) {
 								userOperationRecords = append(userOperationRecords, &userOperationRecord)
 							}
 						case withdrawnTopic:
-							if len(vLog.Topics) >= 3 && len(vLog.Data) >= 64 {
+							if len(vLog.Topics) >= 4 && len(vLog.Data) >= 64 {
 								// user在topics[1]中 (indexed)
 								user := common.BytesToAddress(vLog.Topics[1].Bytes()).Hex()
 
 								// poolId在topics[2]中 (indexed)
 								poolId := new(big.Int).SetBytes(common.TrimLeftZeroes(vLog.Topics[2].Bytes()))
+
+								// tokenAddress在topics[3]中 (indexed)
+								tokenAddress := common.BytesToAddress(vLog.Topics[3].Bytes()).Hex()
 
 								// amount, withdrawnAt在data中
 								data := vLog.Data
@@ -149,9 +158,10 @@ func StartSync(c context.Context) {
 								// 创建提现记录并保存到数据库 (复用StakedRecord模型)
 								userOperationRecord := model.UserOperationRecord{
 									ChainId:       int64(chainId),
-									User:          user,
-									PoolId:        poolId.String(),
-									Amount:        amount.String(),
+									Address:       user,
+									PoolId:        poolId.Int64(), // 修改:将big.Int转换为int64
+									TokenAddress:  tokenAddress,
+									Amount:        amount.Int64(),
 									OperationTime: withdrawnAt.Int64(), // 解除质押时间
 									UnlockTime:    0,                   // 不再使用此字段
 									TxHash:        vLog.TxHash.Hex(),
@@ -160,34 +170,66 @@ func StartSync(c context.Context) {
 								}
 								userOperationRecords = append(userOperationRecords, &userOperationRecord)
 							}
+						default:
+							log.Logger.Info("未知的日志类型", zap.String("tx_hash", vLog.TxHash.Hex()))
 						}
-						log.Logger.Info("解析并保存日志成功", zap.String("tx_hash", vLog.TxHash.Hex()))
 					}
-					ctx.Ctx.DB.Transaction(func(tx *gorm.DB) error {
-						if len(userOperationRecords) > 0 {
-							// 批量插入用户操作记录
-							if err := tx.CreateInBatches(userOperationRecords, 100).Error; err != nil {
-								log.Logger.Error("批量插入用户操作记录失败", zap.Error(err))
+					log.Logger.Info("解析日志成功，条数为。", zap.Int("log_count", len(userOperationRecords)))
+					if len(userOperationRecords) == 0 {
+						// 更新链的最后区块号
+						if err := ctx.Ctx.DB.Model(&model.Chain{}).Where("chain_id = ?", int64(chainId)).Update("last_block_num", targetBlockNum).Error; err != nil {
+							log.Logger.Error("更新最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
+							return
+						}
+						lastBlockNum = targetBlockNum
+						log.Logger.Info("更新数据表最后区块号成功")
+						return
+					}
+					txErr := ctx.Ctx.DB.Transaction(func(tx *gorm.DB) error {
+						// 批量插入用户操作记录
+						if err := tx.CreateInBatches(userOperationRecords, 100).Error; err != nil {
+							log.Logger.Error("批量插入用户操作记录失败", zap.Error(err))
+							return err
+						}
+
+						// 循环遍历userOperationRecords得到总金额，更新用户表总金额字段
+						// 这里可以按用户分组统计总金额并更新用户表
+						// 示例代码：
+						// 修改:使用Address和TokenAddress组合作为唯一键进行加减法运算
+						type userTokenKey struct {
+							Address      string
+							TokenAddress string
+						}
+						userAmounts := make(map[userTokenKey]*big.Int)
+						for _, record := range userOperationRecords {
+							key := userTokenKey{
+								Address:      record.Address,
+								TokenAddress: record.TokenAddress,
+							}
+							amount := big.NewInt(record.Amount)
+							if userAmounts[key] == nil {
+								userAmounts[key] = big.NewInt(0)
+							}
+							if record.EventType == "Staked" {
+								userAmounts[key].Add(userAmounts[key], amount)
+							} else if record.EventType == "Withdrawn" {
+								userAmounts[key].Sub(userAmounts[key], amount)
+							}
+						}
+						//更新每个用户tokenAddress总金额
+						for key, amount := range userAmounts {
+							// 修改:使用UPSERT操作处理用户记录不存在的情况
+							if err := tx.Exec(`
+									INSERT INTO users (chain_id, token_address, address, total_amount, last_block_num)
+									VALUES (?, ?, ?, ?, ?)
+									ON CONFLICT (chain_id, token_address, address)
+									DO UPDATE SET
+										total_amount = users.total_amount + ?,
+										last_block_num = ?
+								`, chainId, key.TokenAddress, key.Address, amount.Int64(), targetBlockNum, amount.Int64(), targetBlockNum).Error; err != nil {
+								log.Logger.Error("更新用户总金额失败", zap.String("user", key.Address), zap.String("token_address", key.TokenAddress), zap.String("amount", amount.String()), zap.Error(err))
 								return err
 							}
-
-							// 循环遍历userOperationRecords得到总金额，更新用户表总金额字段
-							// 这里可以按用户分组统计总金额并更新用户表
-							// 示例代码：
-							// userAmounts := make(map[string]*big.Int)
-							// for _, record := range userOperationRecords {
-							//     amount, _ := new(big.Int).SetString(record.Amount, 10)
-							//     if userAmounts[record.User] == nil {
-							//         userAmounts[record.User] = big.NewInt(0)
-							//     }
-							//     if record.EventType == "Staked" {
-							//         userAmounts[record.User].Add(userAmounts[record.User], amount)
-							//     } else if record.EventType == "Withdrawn" {
-							//         userAmounts[record.User].Sub(userAmounts[record.User], amount)
-							//     }
-							// }
-							// TODO: 实现更新用户表总金额字段的逻辑
-							//tx.Exec("UPDATE users SET total_amount = total_amount + ? WHERE address = ?", amount, user);
 						}
 						// 更新链的最后区块号
 						if err := tx.Model(&model.Chain{}).Where("chain_id = ?", int64(chainId)).Update("last_block_num", targetBlockNum).Error; err != nil {
@@ -196,8 +238,12 @@ func StartSync(c context.Context) {
 						}
 						return nil
 					})
-					// 更新内存中的最后区块号
-					lastBlockNum = targetBlockNum
+					if txErr != nil {
+						log.Logger.Error("保存log监听，事务处理失败", zap.Error(txErr))
+					} else {
+						// 更新内存中的最后区块号
+						lastBlockNum = targetBlockNum
+					}
 
 				}
 			}
