@@ -65,7 +65,7 @@ func initLog() {
 }
 func initDB() {
 	ctx.Ctx.DB = db.InitPgsql()
-	//ctx.Ctx.Redis = db.InitRedis()
+	ctx.Ctx.Redis = db.InitRedis()
 }
 func initChainClient() {
 	chainMap := make(map[int]*chainclient.ChainClient)
@@ -94,7 +94,7 @@ func initGin() {
 func initApiGin() {
 	r := router.InitRouter()
 	ctx.Ctx.Gin = r
-	router.Bind(r, &ctx.Ctx)
+	router.ApiBind(r, &ctx.Ctx)
 	err := r.Run(":" + ctx.Ctx.Config.App.APIPort)
 	if err != nil {
 		panic(err)

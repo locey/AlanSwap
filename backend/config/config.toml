@@ -1,16 +1,18 @@
 [app]
-name = "bossfi"
-prot=8000
-apiPort = 8100
+name = "alanswap"
+port="8000"
+apiPort = "8100"
 version = "v1"
 jwtSecret = "xxx"
+jwtttl = "12"
+
 
 [pgsql]
-host = "localhost"
+host = "127.0.0.1"
 port = "5432"
-database = "bossfi"
-username = "bossfi"
-password = "bossfi"
+database = "crypto_swap"
+username = "postgres"
+password = "123456"
 
 [redis]
 host = "localhost"
@@ -20,6 +22,8 @@ password = ""
 max_idle = 10
 max_active = 0
 idle_timeout = 180
+poolSize=200
+
 
 [[chains]]
 name = "sepolia"

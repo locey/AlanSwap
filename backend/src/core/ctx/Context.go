@@ -3,6 +3,7 @@ package ctx
 import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/mumu/cryptoSwap/src/core/chainclient"
 	"github.com/mumu/cryptoSwap/src/core/config"
 	"go.uber.org/zap"
@@ -12,9 +13,9 @@ import (
 var Ctx = Context{}
 
 type Context struct {
-	Config *config.Config
-	DB     *gorm.DB
-	//Redis    *redis.Pool
+	Config   *config.Config
+	DB       *gorm.DB
+	Redis    *redis.Client
 	Log      *zap.Logger
 	ChainMap map[int]*chainclient.ChainClient
 	Gin      *gin.Engine

@@ -21,6 +21,7 @@ type AppConfig struct {
 	Port      string `toml:"port" json:"port"`
 	Version   string `toml:"version" json:"version"`
 	JwtSecret string `toml:"jwtSecret" json:"jwtSecret"` //添加jwt秘钥配置
+	JwtTTL    int    `toml:"jwt_ttl" json:"jwtTtl"`
 }
 
 type MonitorConfig struct {
@@ -44,6 +45,7 @@ type RedisConfig struct {
 	MaxIdle     int    `toml:"max_idle" json:"maxIdle"`
 	MaxActive   int    `toml:"max_active" json:"maxActive"`
 	IdleTimeout int    `toml:"idle_timeout" json:"idleTimeout"`
+	PoolSize    int    `toml:"poolSize" json:"poolSize"`
 }
 
 type ChainConfig struct {

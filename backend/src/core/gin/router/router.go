@@ -3,8 +3,12 @@ package router
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/mumu/cryptoSwap/src/app/api"
+	"github.com/mumu/cryptoSwap/src/core/config"
 	"github.com/mumu/cryptoSwap/src/core/ctx"
 	"github.com/mumu/cryptoSwap/src/core/gin/middleware"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"time"
 )
 
@@ -47,5 +51,27 @@ func Bind(r *gin.Engine, ctx *ctx.Context) {
 	//	evmApi := api.NewEvmApi()
 	//	v.GET("/evm/get_block_by_num/:block_num", evmApi.GetBlockByNum)
 	//}
+
+}
+
+func ApiBind(r *gin.Engine, ctx *ctx.Context) {
+	// 注册 swagger 路由
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	v := r.Group("/api/" + config.Conf.App.Version)
+
+	//不需要验证的接口
+	authApi := api.NewAuthApi()
+	v.GET("/auth/nonce/", authApi.GetNonce)
+	v.POST("/auth/verify", authApi.Verify)
+	v.POST("/auth/logout", authApi.Logout)
+
+	//需要验证的接口
+	author := r.Group("/api/" + config.Conf.App.Version)
+	author.Use(middleware.AuthorMiddleware())
+
+	airDropApi := api.NewAirDropApi()
+	//我的空投奖励预览
+	author.GET("/airdrop/overview", airDropApi.Overview)
 
 }
