@@ -1,8 +1,40 @@
+import { useState } from "react";
 import GlowCard from "./GlowCard";
 import NButton from "./NButton";
 
 // —— 页面3：质押 ——
-const StakeCard = ({ title, token, tvl, days, apy, deposited, badge }) => (
+export default function StakeCard({ title, token, tvl, days, apy, deposited, badge }) {
+  const [haveDeposited, togggleHaveFlag] = useState(false);
+  const handleAddDeposited = (e) =>{
+    setdepositeTemp('');
+    toggleShowInputFlag(true);
+    console.log({e }, "已质押")
+  }
+  const handleMinusDeposited = (e) =>{
+    togggleHaveFlag(false);
+    console.log({e }, "未质押")
+  }
+  const handlegetBonus = (e) =>{
+    console.log({e }, "领取奖励")
+  }
+  const [depositeNum, setdepositeNum] = useState('');
+  const [depositeTemp, setdepositeTemp] = useState('');
+  const [showInputFlag, toggleShowInputFlag] = useState(false);
+  const confirmAddDeposited = ()=>{
+    console.log("===confirm_AddDeposited")
+    if(depositeTemp > 0) {
+      setdepositeNum(depositeTemp)
+    }
+    togggleHaveFlag(true);
+    toggleShowInputFlag(false);
+  }
+  const cancelAddDeposited = ()=>{
+    console.log('-cancel_AddDeposited=')
+    setdepositeNum('');
+    togggleHaveFlag(false);
+    toggleShowInputFlag(false);
+  }
+  return (
     <GlowCard>
       <div className="p-5">
         <div className="flex items-center justify-between">
@@ -20,23 +52,37 @@ const StakeCard = ({ title, token, tvl, days, apy, deposited, badge }) => (
   
         <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
           <div>
-            <div className="text-white/50">总锁仓</div>
+            <div className="text-white/50">总锁定价值</div>
             <div className="text-white/90">{tvl}</div>
           </div>
           <div>
-            <div className="text-white/50">周期</div>
+            <div className="text-white/50">锁定期</div>
             <div className="text-white/90">{days}</div>
           </div>
-          <div className="text-white/50">{deposited ? "已质押" : "未质押"}</div>
+          <div>
+            <div className="text-white/50">{haveDeposited ? "已质押" : "未质押"}</div>
+            {depositeNum>0 && <div className="text-white/90">{depositeNum}</div>}
+          </div>
         </div>
+
+        {showInputFlag && <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+          <input type="text" className="border rounded p-1 m-1 bg-transparent" value={depositeTemp} onChange={e=> setdepositeTemp(e.target.value)} placeholder="请输入数量" />
+          <button className="inline-flex items-center justify-center rounded-xl font-medium transition-all select-none h-9 px-3 text-sm border text-white bg-green-600 hover:bg-green-700"
+            onClick={() => confirmAddDeposited(title)}>确认质押</button>
+          <button className="inline-flex items-center justify-center rounded-xl font-medium transition-all select-none h-9 px-3 text-sm border"
+            onClick={() => cancelAddDeposited(title)}>取消</button>
+          <div className="text-white/50">{haveDeposited ? "已质押" : "未质押"}</div>
+        </div>}
   
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <NButton>质押</NButton>
-          <NButton variant="ghost">解除质押</NButton>
-          <NButton variant="outline">领取奖励</NButton>
+          <button className="inline-flex items-center justify-center rounded-xl font-medium transition-all select-none h-9 px-3 text-sm border border-white/20 text-white hover:bg-white/5"
+            onClick={() => handleAddDeposited(title)}>+ 质押</button>
+          <button className="inline-flex items-center justify-center rounded-xl font-medium transition-all select-none h-9 px-3 text-sm border border-white/20 text-white hover:bg-white/5"
+            onClick={() => handleMinusDeposited(title)}>- 解除质押</button>
+          <button className="inline-flex items-center justify-center rounded-xl font-medium transition-all select-none h-9 px-3 text-sm border border-white/20 text-white hover:bg-white/5"
+            onClick={() => handlegetBonus(title)}>领取奖励</button>
         </div>
       </div>
     </GlowCard>
-);
-
-export default StakeCard;
+  );
+};
