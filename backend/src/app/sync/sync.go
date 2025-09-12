@@ -76,6 +76,10 @@ func StartSync(c context.Context) {
 							zap.Uint64("current_block", currentBlock))
 						continue
 					}
+					//当断开链接很久时，分批次拉取日志，一次拉取1000个块的日志
+					if targetBlockNum-lastBlockNum > 1000 {
+						targetBlockNum = lastBlockNum + 1000
+					}
 					log.Logger.Info("开始监听log日志", zap.Int64("form_block", lastBlockNum), zap.Int64("to_block", targetBlockNum))
 					// 这里需要实现具体的日志查询逻辑
 					logs, err := evmClient.GetFilterLogs(big.NewInt(lastBlockNum), big.NewInt(targetBlockNum), chain.Address)
@@ -182,7 +186,7 @@ func StartSync(c context.Context) {
 							log.Logger.Error("更新最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
 							return
 						}
-						lastBlockNum = targetBlockNum
+						lastBlockNum = targetBlockNum + 1
 						log.Logger.Info("更新数据表最后区块号成功")
 						return
 					}
@@ -243,7 +247,7 @@ func StartSync(c context.Context) {
 						log.Logger.Error("保存log监听，事务处理失败", zap.Error(txErr))
 					} else {
 						// 更新内存中的最后区块号
-						lastBlockNum = targetBlockNum
+						lastBlockNum = targetBlockNum + 1
 					}
 
 				}
