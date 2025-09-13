@@ -80,8 +80,8 @@ contract Stake is ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControl
     }
 
     event PoolCreated(uint256 indexed poolId, address indexed token, uint256 lockDuration, string name);
-    event Staked(address indexed user, uint256 indexed poolId, uint256 amount, uint256 stakedAt, uint256 unlockTime);
-    event Withdrawn(address indexed user, uint256 indexed poolId, uint256 amount, uint256 reward, uint256 withdrawnAt);
+    event Staked(address indexed user, uint256 indexed poolId,address indexed tokenAddress, uint256 amount, uint256 stakedAt, uint256 unlockTime);
+    event Withdrawn(address indexed user, uint256 indexed poolId,address indexed tokenAddress, uint256 amount, uint256 withdrawnAt);
     event ClaimRewards(address indexed user, uint256 indexed poolId, uint256 reward, uint256 claimedAt);
     event SharePriceUpdated(uint256 date, uint256 price);
 
@@ -233,7 +233,7 @@ contract Stake is ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControl
             initialSharePrice: dailySharePrices[_poolId][timestampToDate(block.timestamp)]
         }));
 
-        emit Staked(msg.sender, _poolId, _amount, block.timestamp, block.timestamp + pool_.lockDuration);
+        emit Staked(msg.sender, _poolId, pool_.tokenAddress, _amount, block.timestamp, block.timestamp + pool_.lockDuration);
     }
     function withdraw(uint256 _poolId,uint256 _amount) public nonReentrant whenNotPaused{
         require(_poolId < pools.length, "Invalid pool ID");
@@ -267,7 +267,7 @@ contract Stake is ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControl
         }else{
             IERC20(pool_.tokenAddress).safeTransfer(msg.sender, _amount);
         }
-        emit Withdrawn(msg.sender, _poolId, _amount, user.unclaimedRewards, block.timestamp);
+        emit Withdrawn(msg.sender, _poolId, pool_.tokenAddress, _amount, block.timestamp);
     }
     function calculateRewards(uint256 _poolId,StakeRecord memory record) internal view returns (uint256) {
         uint256 endDate = timestampToDate(block.timestamp);
