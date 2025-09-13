@@ -298,10 +298,10 @@ const CryptoSwapDEX = () => {
                         placeholder="0.0"
                         className="flex-1 bg-gray-700 py-1 rounded-xl text-white text-right text-xl font-semibold focus:outline-none"
                       />
-                      <button 
+                      {/* <button 
                       onClick={handleMaxClick}
                       className="text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-cyan-400/10 px-2 py-1 rounded"
-                    >MAX</button>
+                    >MAX</button> */}
                     </div>
                   </div>
                 </div>
