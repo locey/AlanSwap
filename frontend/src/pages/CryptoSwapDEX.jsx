@@ -345,7 +345,7 @@ const CryptoSwapDEX = () => {
                 {/* 标题和设置 */}
                 <div className="flex items-center justify-between mb-6">
                   <div data-slot="card-title" className="text-xl font-bold neon-text-enhanced">交换</div>
-                  <button className="p-1 rounded-lg bg-slate-700/50 hover:bg-slate-700/70 transition-all">最优路径</button>
+                  <span className="text-sm text-black rounded-lg px-1 bg-slate-700/50 hover:bg-slate-700/70 transition-all">最优路径</span>
                 </div>
 
                 {/* 从 Token */}
@@ -456,7 +456,7 @@ const CryptoSwapDEX = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">市场概览</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {tokens.slice(0, 4).map((token, index) => (
-                    <div key={token.symbol} className="bg-slate-800/50 rounded-lg p-3">
+                    <div key={token.symbol} className="bg-slate-800/50 rounded-lg p-3 duration-300 card-cyber transition-all animate-float-slow" style={{animationDelay: `${0.5*index}s`,}}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-lg">{token.icon}</span>
                         <span className="text-sm font-medium text-white">{token.symbol}</span>
