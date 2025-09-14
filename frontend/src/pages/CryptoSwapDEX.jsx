@@ -18,17 +18,12 @@ import BackgroundStars from './BackgroundStars';
 import NotificationContainer from './NotificationContainer';
 import StatCard from './StatCard';
 import EmptyState from './EmptyState';
-// import { ArrowUpDown, Settings, Info } from './Icons';
 import PoolCard from './PoolCard';
 import GlowCard from './GlowCard';
 import StakeCard from './StakeCard';
 import RewardCard from './RewardCard';
 import ConnectWalletButton from "./ConnectWalletButton";
-
 import { ethers } from "ethers";
-
-import abi from './MyContract.json'
-import { readContract, writeContract } from "./contractClient";
 
 const CryptoSwapDEX = () => {
   const [activeTab, setActiveTab] = useState('swap');
@@ -108,20 +103,6 @@ const CryptoSwapDEX = () => {
       throw e;
     }
   }
-
-
-  const CONTRACT = "0xBE023722Da91C220D2051Fa37072b0378754CC72";
-
-  const readExample = async () => {
-    const res = await readContract({
-      address: CONTRACT,
-      abi: abi.abi ?? abi,
-      functionName: "myValue", // 改成你的函数
-      args: [],
-    });
-    console.log('read_example: ', res);
-  }
-
 
   const handleDisconnect = () => {
     setWallet({ connected: false, address: null, chainId: null });
@@ -303,7 +284,7 @@ const CryptoSwapDEX = () => {
           {[
             { key: 'swap', label: '交换', icon: '🔄' },
             { key: 'liquidity', label: '流动性', icon: '💧' },
-            { key: 'mining', label: '质押', icon: '📊' },
+            { key: 'mining', label: '质押', icon: '🔒' },
             { key: 'rewards', label: '空投', icon: '🎁' }
           ].map(tab => (
             <button
