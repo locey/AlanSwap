@@ -9,6 +9,7 @@ const truncate = (addr) => (addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "
 
 
 export default function ConnectWalletButton({
+    isConnected,
     onConnect, // (ctx) => void ctx: { address, provider, chainId }
     onDisconnect, // () => void
     onAccountsChanged,// (ctx) => void ctx: { address|null, provider }
@@ -32,8 +33,9 @@ export default function ConnectWalletButton({
                 eth.request({ method: "eth_accounts" }),
                 eth.request({ method: "eth_chainId" }),
             ]);
-            setAddress(accs?.[0] || null);
-            setChainId(cId || null);
+            console.log('initial_wallet_btn: ', [accs, cId] )
+            // setAddress(accs?.[0] || null);
+            // setChainId(cId || null);
         } catch (e) {
             // no-op
         }
@@ -95,9 +97,9 @@ export default function ConnectWalletButton({
                 className={`font-semibold px-2 py-1 rounded-2xl transition-all duration-200 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:-translate-y-1`}>连接钱包</button>
             ) : (
                 <div className="flex items-center gap-2">
-                    <span className='bg-green-500/20 text-green-400' title={address}>{truncate(address)}</span>
+                    {isConnected && <span className='bg-green-500/20 text-green-400' title={address}>{truncate(address)}</span>}
                     <button onClick={disconnect} disabled={busy} className="px-3 py-1 rounded-xl bg-zinc-200 dark:bg-zinc-700 text-sm hover:opacity-90 disabled:opacity-50 text-red-400">断开</button>
-                    <span className='bg-green-500/20 text-green-400' title={chainId}>{chainId}</span>
+                    {isConnected && <span className='bg-green-500/20 text-green-400' title={chainId}>{chainId}</span>}
                 </div>
             )}
             {err && <span className="text-xs text-red-500">{err}</span>}

@@ -25,6 +25,10 @@ import StakeCard from './StakeCard';
 import RewardCard from './RewardCard';
 import ConnectWalletButton from "./ConnectWalletButton";
 
+import { ethers } from "ethers";
+
+import abi from './MyContract.json'
+import { readContract, writeContract } from "./contractClient";
 
 const CryptoSwapDEX = () => {
   const [activeTab, setActiveTab] = useState('swap');
@@ -40,13 +44,83 @@ const CryptoSwapDEX = () => {
   const [wallet, setWallet] = useState({ connected: false, address: null, chainId: null });
   const [statusMsg, setStatusMsg] = useState("未连接");
 
-  const handleConnect = ({ address, provider, chainId }) => {
-    setWallet({ connected: true, address, chainId });
-    setStatusMsg(`已连接：${address.slice(0, 6)}…${address.slice(-4)} @ ${chainId}`);
-    // TODO: 在此触发你的首页数据加载，如余额、池子列表等
-    setWalletConnected(true);
-    showNotification('钱包连接成功！', 'success');
+  const handleConnect = async ({ address, provider, chainId }) => {
+    console.log('handleConnect_: ', { address, provider, chainId })
+    // 一键登录：签名 nonce -> 提交 verify -> 获得 JWT
+    if (address) {
+      // 调用后端接口获取 nonce
+      try {
+        // await readExample();
+        const res = await fetchNonce(address);
+        const nonce = res.data.nonce;
+        // 使用 ethers.providers 对 nonce 消息进行签名
+        const eprovider = new ethers.BrowserProvider(window.ethereum);
+        await eprovider.send('eth_requestAccounts', [])
+        const signer = await eprovider.getSigner();
+        const signature = await signer.signMessage(nonce);
+        //
+        const vr = await verifySignature({ nonce, address, signature });
+        console.log('vr: ', vr)
+        if (vr.msg !=="OK") throw new Error("未获得 token");
+        setWallet({ connected: true, address, chainId });
+        setStatusMsg(`已连接：${address.slice(0, 6)}…${address.slice(-4)} @ ${chainId}`);
+        // TODO: 在此触发你的首页数据加载，如余额、池子列表等
+        setWalletConnected(true);
+        showNotification('钱包连接成功！', 'success');
+      } catch (e) {
+        console.error("失败: ", e);
+        showNotification(`连接失败: ${e}` , 'error')
+      }
+    } else {
+      setWalletConnected(false);
+    }
   };
+
+  // 调用后端接口获取 nonce 的方法
+  async function fetchNonce(address) {
+    try {
+      const url = `https://8bffa73e18a7.ngrok-free.app/api/v1/auth/nonce/?address=${address}`;
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw new Error("请求失败: " + res.status);
+      const data = await res.json();
+      console.log("Nonce 响应:", data);
+      return data;
+    } catch (e) {
+      console.error("获取 nonce 出错:", e);
+      throw e;
+    }
+  }
+
+  // 调用后端「签名验证」接口，换取 JWT
+  async function verifySignature({ nonce, address, signature }) {
+    try {
+      const res = await fetch("https://8bffa73e18a7.ngrok-free.app/api/v1/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nonce, address, signature }),
+      });
+      if (!res.ok) throw new Error(`验证失败: ${res.status}`);
+      const data = await res.json();
+      console.log("Verify 响应:", data);
+      return data; // 期望含 { token: "JWT..." }
+    } catch (e) {
+      console.error("签名验证出错:", e);
+      throw e;
+    }
+  }
+
+
+  const CONTRACT = "0xBE023722Da91C220D2051Fa37072b0378754CC72";
+
+  const readExample = async () => {
+    const res = await readContract({
+      address: CONTRACT,
+      abi: abi.abi ?? abi,
+      functionName: "myValue", // 改成你的函数
+      args: [],
+    });
+    console.log('read_example: ', res);
+  }
 
 
   const handleDisconnect = () => {
@@ -116,7 +190,7 @@ const CryptoSwapDEX = () => {
   };
 
   const handleMaxClick = () => {
-    console.log({wallet },999)
+    console.log({ wallet }, 999)
     const tokenData = getTokenData(fromToken);
     if (tokenData) {
       const maxAmount = tokenData.balance.toString();
@@ -155,10 +229,14 @@ const CryptoSwapDEX = () => {
   };
 
   // 连接钱包
-  const connectWallet = () => {
+  const setConnectWallet = async () => {
     if (!walletConnected) {
-      setWalletConnected(true);
-      showNotification('钱包连接成功！', 'success');
+      const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const addr = accs?.[0];
+      if (!addr) throw new Error("未获取到账户");
+      handleConnect(addr); // 复用父组件的连接处理
+      // setWalletConnected(true);
+      // showNotification('钱包连接成功！', 'success');
     } else {
       setWalletConnected(false);
     }
@@ -178,7 +256,7 @@ const CryptoSwapDEX = () => {
   // 执行兑换
   const executeSwap = async () => {
     if (!walletConnected) {
-      connectWallet();
+      setConnectWallet();
       return;
     }
 
@@ -244,7 +322,7 @@ const CryptoSwapDEX = () => {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-4">
-            <ConnectWalletButton
+            <ConnectWalletButton isConnected={walletConnected}
               onConnect={handleConnect}
               onDisconnect={handleDisconnect}
               onAccountsChanged={handleAccountsChanged}
@@ -420,7 +498,7 @@ const CryptoSwapDEX = () => {
                 </div>
               </div>
 
-              {!walletConnected ? <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={setConnectWallet}
                 icon="💧"
                 title={currentPool === "allPool" ? "连接钱包开始提供流动性" : "连接钱包查看您的流动性"}
                 description={currentPool === "allPool" ? "连接您的钱包以添加流动性并赚取手续费" : "连接钱包以查看和管理您的流动性池"}
@@ -481,7 +559,7 @@ const CryptoSwapDEX = () => {
                 <StatCard title="平均APY" value={`${stats.apy}%`} change="年化收益" />
               </div>
 
-              {!walletConnected ? <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={setConnectWallet}
                 icon="🔒"
                 title="连接钱包开始质押"
                 description="连接您的钱包以查看和管理质押"
@@ -553,7 +631,7 @@ const CryptoSwapDEX = () => {
                 </div>
               </div>
 
-              {!walletConnected ? <EmptyState connectWallet={connectWallet}
+              {!walletConnected ? <EmptyState connectWallet={setConnectWallet}
                 icon="🎁"
                 title={currentDropType === 'airdrop' ? "连接钱包参与空投" : "连接钱包开始任务"}
                 description={currentDropType === 'airdrop' ? "连接您的钱包以参与空投活动并领取奖励" : "连接钱包以完成任务并获得奖励"}
