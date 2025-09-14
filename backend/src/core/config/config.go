@@ -21,7 +21,7 @@ type AppConfig struct {
 	Port      string `toml:"port" json:"port"`
 	Version   string `toml:"version" json:"version"`
 	JwtSecret string `toml:"jwtSecret" json:"jwtSecret"` //添加jwt秘钥配置
-	JwtTTL    int    `toml:"jwt_ttl" json:"jwtTtl"`
+	JwtTTL    int    `toml:"jwtTtl" json:"jwtTtl"`
 }
 
 type MonitorConfig struct {

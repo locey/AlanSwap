@@ -14,6 +14,7 @@ import (
 	commonUtil "github.com/mumu/cryptoSwap/src/common"
 	"github.com/mumu/cryptoSwap/src/core/ctx"
 	"github.com/mumu/cryptoSwap/src/core/result"
+	"strings"
 	"time"
 )
 
@@ -31,11 +32,14 @@ func NewAuthApi() *AuthApi {
 	}
 }
 
-// GetNonce
-//
-//	@Description: 获取随机nonce
-//	@receiver auth
-//	@param c
+// GetNonce  godoc
+// @Summary      获取随机数
+// @Description  获取随机数
+// @Accept       json
+// @Produce      json
+// @Param        data  body  model.Demo  true  "数据"
+// @Success      200 {object} map[string]string
+// @Router       /api/v1/auth/nonce?address [GET]
 func (auth *AuthApi) GetNonce(c *gin.Context) {
 	address := c.Query("address")
 	if address != "" {
@@ -108,39 +112,55 @@ func (auth *AuthApi) Verify(c *gin.Context) {
 
 }
 
-// 验证以太坊签名
+// 验证签名方法
 func verifySignature(address, signature, nonce string) (bool, error) {
-	// 将地址转换为common.Address格式
-	addr := common.HexToAddress(address)
+	// 1. 验证地址格式
+	if !common.IsHexAddress(address) {
+		return false, fmt.Errorf("无效的以太坊地址: %s", address)
+	}
+	expectedAddr := common.HexToAddress(address)
 
-	// 重建签名的消息（必须与客户端签名的格式完全一致）
-	message := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(nonce), nonce)
-
-	// 计算消息的Keccak256哈希
-	messageHash := crypto.Keccak256Hash([]byte(message))
-
-	// 解码签名
-	sig, err := hexutil.Decode(signature)
+	// 2. 解码签名（去除可能的0x前缀）
+	sigBytes, err := hexutil.Decode(signature)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("签名解码失败: %v", err)
 	}
 
-	// 恢复公钥
-	if sig[64] != 27 && sig[64] != 28 {
-		return false, fmt.Errorf("invalid recovery id")
+	// 3. 验证签名长度（应该是65字节）
+	if len(sigBytes) != 65 {
+		return false, fmt.Errorf("无效签名长度: %d, 应为65字节", len(sigBytes))
 	}
-	sig[64] -= 27 // 转换为以太坊标准的恢复ID
 
-	pubKey, err := crypto.SigToPub(messageHash.Bytes(), sig)
+	// 4. 以太坊签名中，最后的字节是恢复标识符（recovery identifier）
+	// 需要将其从27/28转换为0/1以适应Ecrecover
+	if sigBytes[64] != 0 && sigBytes[64] != 1 {
+		if sigBytes[64] == 27 || sigBytes[64] == 28 {
+			sigBytes[64] -= 27
+		} else {
+			return false, fmt.Errorf("无效的恢复标识符: %d", sigBytes[64])
+		}
+	}
+
+	// 5. 计算消息的哈希（以太坊使用特定的前缀）
+	// 格式: "\x19Ethereum Signed Message:\n" + len(message) + message
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(nonce), nonce)
+	msgHash := crypto.Keccak256Hash([]byte(msg))
+	fmt.Printf("msg: %x\n", msg)
+	fmt.Printf("msgHash: %s\n", msgHash.Hex())
+	fmt.Printf("signature: %x\n", sigBytes)
+	// 6. 使用Ecrecover恢复公钥
+	recoveredPubKey, err := crypto.SigToPub(msgHash.Bytes(), sigBytes)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("恢复公钥失败: %v", err)
 	}
 
-	// 从公钥推导出地址
-	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+	// 7. 将公钥转换为地址
+	recoveredAddr := crypto.PubkeyToAddress(*recoveredPubKey)
 
-	// 比较地址是否匹配
-	return addr == recoveredAddr, nil
+	//recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+	fmt.Printf("从公钥推导出地址: %s\n", recoveredAddr.Hex())
+	// 8. 比较恢复的地址与预期地址（不区分大小写）
+	return strings.EqualFold(recoveredAddr.Hex(), expectedAddr.Hex()), nil
 }
 
 func (auth *AuthApi) Logout(c *gin.Context) {
