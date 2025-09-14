@@ -141,6 +141,7 @@
   position: relative;
   overflow: hidden;
 }
+
 .card-cyber:hover {
   border-color: #3b82f699;
   transform: translateY(-5px) scale(1.02);
@@ -150,4 +151,20 @@
 .duration-300 {
   --tw-duration: .3s;
   transition-duration: .3s;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: 6s ease-in-out infinite float;
 }
