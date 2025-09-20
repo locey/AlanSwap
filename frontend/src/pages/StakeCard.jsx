@@ -1,6 +1,5 @@
 import { useState } from "react";
 import GlowCard from "./GlowCard";
-import NButton from "./NButton";
 import { TrendingUp, Clock, PlusCircle, Unlock, Gift } from "lucide-react";
 
 // —— 页面3：质押 ——

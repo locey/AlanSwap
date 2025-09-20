@@ -1,17 +1,7 @@
 import {
-  ChevronDown,
-  RefreshCw,
   ArrowUpDown,
-  Sparkles,
-  Lock,
-  Gift,
-  Droplets,
-  Coins,
-  BarChart3,
-  Crown,
-  Star,
-  Flame,
-  ShieldCheck,
+  Trophy,
+  Medal,
 } from "lucide-react";
 import React, { useState, useEffect } from 'react';
 import BackgroundStars from './BackgroundStars';
@@ -27,7 +17,7 @@ import { ethers } from "ethers";
 
 const CryptoSwapDEX = () => {
   const [activeTab, setActiveTab] = useState('swap');
-  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(true);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [fromToken, setFromToken] = useState('ETH');
@@ -142,6 +132,33 @@ const CryptoSwapDEX = () => {
   const getTokenData = (symbol) => {
     return tokens.find(token => token.symbol === symbol);
   };
+
+  const [poolDatalist] = useState([
+    { pair:"ETH/USDC", tvl: "$5.8M", vol: "$1.2M", fee: "0.05%", apy: "24.5%", badge: '🔷💵' },
+    { pair: "WBTC/ETH", tvl: "$3.2M", vol: "$890K", fee: "0%", apy: "18.7%", badge: '₿🔷' },
+    { pair: "UNI/USDC", tvl: "$1.8M", vol: "$450K", fee: "0%", apy: "12.1%", badge: '🦄💵' },
+    { pair: "LINK/ETH", tvl: "$980K", vol: "$230K", fee: "0%", apy: "20.1%", badge: '🔗🔷' }
+  ])
+  const [stakeDataList] = useState([
+    { title: "ETH 质押池", token: "ETH", tvl: "$2.4M", days: "30天", apy: "12.5%", deposited: "1.2345 ETH", badge: '🔷' },
+    { title: "USDC 稳定池", token: "USDC", tvl: "$5.8M", days: "7天", apy: "8.2%", badge: '💵' },
+    { title: "UNI 治理代币池", token: "UNI", tvl: "$890K", days: "90天", apy: "18.7%", badge: '🦄' },
+    { title: "LINK 预言机池", token: "LINK", tvl: "$1.2M", days: "60天", apy: "15.3%", badge: '🔗' }
+  ])
+  const [rewardDataList] = useState([
+    { title: "CryptoSwap Genesis 空投", subtitle: "庆祝 CryptoSwap 主网上线，向早期用户空投治理代币", totalReward: "1000,000 CSWAP", reward: "250 CSWAP", totalheadCount: 12342, deadline: "2025-12-31", badge: '🚀',
+      reuqireConList: [{id: 1, text: '完成至少 1 次交换', doneFlag: true}, {id: 2, text: '提供流动性超过 $100', doneFlag: true}, {id: 3, text: '邀请 3 个朋友', doneFlag: false}, {id:4, text: '持有 LP 代币 7 天'}]
+    },
+    { title: "流动性提供者奖励", subtitle: "奖励活跃的流动性提供者，促进协议发展", totalReward: "500,000 CSWAP", reward: "150 CSWAP", totalheadCount: 5643, deadline: "2024-11-30", badge: '💧',
+      reuqireConList: [{id: 1, text: '提供流动性超过 $500', doneFlag: true }, {id: 2, text: '保持流动性 30 天', doneFlag: false }, {id: 3, text: '参与治理投票', doneFlag: false }, ]
+    },
+    { title: "社区建设者计划", subtitle: "奖励为社区做出贡献的用户", totalReward: "100,000 CSWAP", reward: "0 CSWAP", totalheadCount: 1342, deadline: "2025-01-15", badge: '🌟',
+      reuqireConList: [{id: 1, text: '在社交媒体分享', doneFlag: true}, {id: 2, text: '参与社区讨论', doneFlag: false}, {id: 3, text: '提交改进建议', doneFlag: false}, ]
+    },
+    { title: "质押奖励计划", subtitle: "已完成的质押奖励活动", totalReward: "400,000 CSWAP", reward: "320 CSWAP", totalheadCount: 1292, deadline: "2024-09-30", badge: '🔒',
+      reuqireConList: [{id: 1, text: '质押 CSWAP 代币', doneFlag: false}, {id: 2, text: '保持质押 60 天', doneFlag: false} ]
+    }
+  ])
 
   const [currentPool, setCurrentPool] = useState('allPool');
   const togglePoolClick = (cPool) => {
@@ -484,10 +501,7 @@ const CryptoSwapDEX = () => {
                 title={currentPool === "allPool" ? "连接钱包开始提供流动性" : "连接钱包查看您的流动性"}
                 description={currentPool === "allPool" ? "连接您的钱包以添加流动性并赚取手续费" : "连接钱包以查看和管理您的流动性池"}
               /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
-                <PoolCard pair="ETH/USDC" tvl="$5.8M" vol="$1.2M" fee="0.05%" apy="24.5%" hasForm badge={'🔷💵'} />
-                <PoolCard pair="WBTC/ETH" tvl="$3.2M" vol="$890K" fee="0%" apy="18.7%" badge={'₿🔷'} />
-                <PoolCard pair="UNI/USDC" tvl="$1.8M" vol="$450K" fee="0%" apy="12.1%" badge={'🦄💵'} />
-                <PoolCard pair="LINK/ETH" tvl="$980K" vol="$230K" fee="0%" apy="20.1%" badge={'🔗🔷'} />
+                { poolDatalist.map( item => <PoolCard key={item.pair} pair={item.pair} tvl={item.tvl} vol={item.vol} fee={item.fee} apy={item.apy} badge={item.badge} /> )}
               </div>)}
               {walletConnected && (<GlowCard>
                 <h3 className="mt-2 ml-6">流动性统计</h3>
@@ -545,10 +559,7 @@ const CryptoSwapDEX = () => {
                 title="连接钱包开始质押"
                 description="连接您的钱包以查看和管理质押"
               /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
-                <StakeCard title="ETH 质押池" token="ETH" tvl="$2.4M" days="30天" apy="12.5%" deposited="1.2345 ETH" badge={'🔷'} />
-                <StakeCard title="USDC 稳定池" token="USDC" tvl="$5.8M" days="7天" apy="8.2%" badge={'💵'} />
-                <StakeCard title="UNI 治理代币池" token="UNI" tvl="$890K" days="90天" apy="18.7%" badge={'🦄'} />
-                <StakeCard title="LINK 预言机池" token="LINK" tvl="$1.2M" days="60天" apy="15.3%" badge={'🔗'} />
+                { stakeDataList.map( item => <StakeCard key={item.title} title={item.title} token={item.token} tvl={item.tvl} days={item.days} apy={item.apy} deposited={item.deposited} badge={item.badge} /> ) }
               </div>)}
               {walletConnected && (<GlowCard>
                 <div className="p-5 grid md:grid-cols-2 gap-6 text-sm">
@@ -617,21 +628,20 @@ const CryptoSwapDEX = () => {
                 title={currentDropType === 'airdrop' ? "连接钱包参与空投" : "连接钱包开始任务"}
                 description={currentDropType === 'airdrop' ? "连接您的钱包以参与空投活动并领取奖励" : "连接钱包以完成任务并获得奖励"}
               /> : (<div className="grid lg:grid-cols-2 gap-6">
-                <RewardCard title="CryptoSwap Genesis 空投" subtitle="庆祝 CryptoSwap 主网上线，向早期用户空投治理代币" reward="250 CSWAP" deadline="2024-12-31" badge={'🚀'} />
-                <RewardCard title="流动性提供者奖励" subtitle="奖励活跃的流动性提供者，促进协议发展" reward="150 CSWAP" deadline="2024-11-30" badge={'💧'} />
-                <RewardCard title="社区建设者计划" subtitle="奖励为社区做出贡献的用户" reward="0 CSWAP" deadline="2025-01-15" badge={'🌟'} />
-                <RewardCard title="质押奖励计划" subtitle="已完成的质押奖励活动" reward="320 CSWAP" locked deadline="2024-09-30" badge={'🔒'} />
+                { rewardDataList.map( item => <RewardCard key={item.title} title={item.title} subtitle={item.subtitle} totalReward={item.totalReward} reward={item.reward}
+                  totalheadCount={item.totalheadCount} deadline={item.deadline} badge={item.badge} reuqireConList={item.reuqireConList} /> )}
               </div>)}
               {walletConnected && (<GlowCard>
                 <div className="p-5">
-                  <div className="text-white/80 font-medium mb-3">空投排行榜</div>
+                  <div className="text-black font-extrabold text-lg mb-3"><Trophy className="w-6 h-6 mr-1 inline-block" />空投排行榜</div>
                   <div className="divide-y divide-white/10 space-y-4">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="text-3xl">🥇</div>
+                          {/* <div className="text-3xl">🥇</div> */}
+                          <Medal className="w-6 h-6 mr-1 text-yellow-500" />
                           <div className="flex flex-col">
-                            <div className="font-semibold text-gray-6300">#{i}</div>
+                            <div className="font-semibold text-black">#{i}</div>
                             <div className='text-sm text-muted-foreground text-gray-500'>0x1234...5678</div>
                           </div>
                         </div>
