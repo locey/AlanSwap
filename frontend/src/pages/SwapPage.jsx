@@ -1,7 +1,9 @@
 import { ArrowUpDown } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useWallet } from "./useWallet";
 
-export default function SwapPage({ walletConnected }) {
+export default function SwapPage() {
+    const { walletConnected } = useWallet();
     const [exchangeRate, setExchangeRate] = useState(1250.00);
     const [slippage, setSlippage] = useState('0.5');
     const [fromAmount, setFromAmount] = useState('');

@@ -4,8 +4,10 @@ import StatCard from "./StatCard"
 import GlowCard from "./GlowCard"
 import RewardCard from "./RewardCard"
 import { Medal, Trophy } from "lucide-react"
+import { useWallet } from "./useWallet"
 
-export default function RewardsPage({ walletConnected }) {
+export default function RewardsPage() {
+    const { walletConnected } = useWallet();
     const setConnectWallet = () => { }
     const [currentDropType, setCurrentDropType] = useState('airdrop');
     const toggleDropClick = (cType) => {

@@ -2,9 +2,11 @@ import { useState } from "react"
 import StatCard from "./StatCard"
 import GlowCard from "./GlowCard"
 import PoolCard from "./PoolCard";
+import { useWallet } from "./useWallet";
+import EmptyState from "./EmptyState";
 
-export default function LiquidityPage({ walletConnected, stats }) {
-
+export default function LiquidityPage({ stats }) {
+    const { walletConnected } = useWallet();
     const [currentPool, setCurrentPool] = useState('allPool');
     const togglePoolClick = (cPool) => {
         setCurrentPool(cPool);
@@ -15,7 +17,9 @@ export default function LiquidityPage({ walletConnected, stats }) {
         { pair: "UNI/USDC", tvl: "$1.8M", vol: "$450K", fee: "0%", apy: "12.1%", badge: '🦄💵' },
         { pair: "LINK/ETH", tvl: "$980K", vol: "$230K", fee: "0%", apy: "20.1%", badge: '🔗🔷' }
     ])
-    const setConnectWallet = ()=>{}
+    const setConnectWallet = ()=>{
+        console.log(999)
+    }
 
     return (
         <div className="space-y-8">

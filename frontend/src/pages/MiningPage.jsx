@@ -3,8 +3,10 @@ import GlowCard from "./GlowCard"
 import EmptyState from "./EmptyState"
 import StatCard from "./StatCard"
 import StakeCard from "./StakeCard"
+import { useWallet } from "./useWallet"
 
-export default function MiningPage({ walletConnected, stats }) {
+export default function MiningPage({ stats }) {
+    const { walletConnected } = useWallet();
     const setConnectWallet = () => { }
     const [stakeDataList] = useState([
         { title: "ETH 质押池", token: "ETH", tvl: "$2.4M", days: "30天", apy: "12.5%", deposited: "1.2345 ETH", badge: '🔷' },
