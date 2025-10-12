@@ -18,7 +18,7 @@ export default function MiningPage({ stats }) {
         <div className="space-y-8">
             <div className="text-center">
                 <h1 className="text-4xl font-bold neon-text mb-2">质押挖矿</h1>
-                <p className="text-gray-400 text-lg">质押您的代币，获得丰厚奖励</p>
+                <p className="text-muted-foreground">质押您的代币，获得丰厚奖励</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -34,7 +34,8 @@ export default function MiningPage({ stats }) {
             /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
                 {stakeDataList.map(item => <StakeCard key={item.title} title={item.title} token={item.token} tvl={item.tvl} days={item.days} apy={item.apy} deposited={item.deposited} badge={item.badge} />)}
             </div>)}
-            {walletConnected && (<GlowCard>
+            {walletConnected && (<div className="relative rounded-2xl p-[1px] bg-gradient-to-br from-cyan-400/20 via-fuchsia-400/10 to-indigo-400/20 hover:glow-purple transition-all duration-300">
+                <div className="p-5 font-semibold text-lg text-glow text-black">质押统计</div>
                 <div className="p-5 grid md:grid-cols-2 gap-6 text-sm">
                     <div>
                         <div className="text-white/70 mb-2">收益分布</div>
@@ -67,7 +68,7 @@ export default function MiningPage({ stats }) {
                         </div>
                     </div>
                 </div>
-            </GlowCard>)}
+            </div>)}
         </div>
     )
 }

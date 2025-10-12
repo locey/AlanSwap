@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GlowCard from "./GlowCard";
 
-export default function PoolCard({ pair, tvl, vol, fee, apy, hasForm, badge }) {
+export default function PoolCard({ pair, tvl, vol, fee, myshare, apy, hasForm, badge }) {
   const [amountA, setamountA] = useState('');
   const [amountB, setamountB] = useState('');
   const [liquidInputFlag, toggleLiquidInputFlag] = useState(false);
@@ -22,8 +22,8 @@ export default function PoolCard({ pair, tvl, vol, fee, apy, hasForm, badge }) {
           <div className="flex items-center gap-3">
             <div className="h-8 w-16 rounded-md text-xl">{badge}</div>
             <div>
-              <div className="text-white/90 font-medium">{pair}</div>
-              <div className="text-xs text-white/50">流动性池</div>
+              <div className="text-black text-lg font-bold">{pair}</div>
+              <div className="text-xs text-muted-foreground">流动性池</div>
             </div>
           </div>
           <div className="text-[10px] px-2 py-1 rounded-md bg-emerald-400/10 text-emerald-300 border border-emerald-400/30">
@@ -31,18 +31,22 @@ export default function PoolCard({ pair, tvl, vol, fee, apy, hasForm, badge }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
           <div>
-            <div className="text-white/50">总锁仓</div>
-            <div className="text-white/90">{tvl}</div>
+            <div className="text-xs text-muted-foreground">总锁定价值</div>
+            <div className="text-lg font-semibold neon-text">{tvl}</div>
           </div>
           <div>
-            <div className="text-white/50">24h 交易量</div>
-            <div className="text-white/90">{vol}</div>
+            <div className="text-xs text-muted-foreground">24h 交易量</div>
+            <div className="text-black text-lg font-semibold">{vol}</div>
           </div>
           <div>
-            <div className="text-white/50">费率</div>
-            <div className="text-white/90">{fee}</div>
+            <div className="text-xs text-muted-foreground">24h 手续费</div>
+            <div className="text-lg font-semibold text-green-400 text-glow">{fee}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">我的份额</div>
+            <div className="text-lg font-semibold text-purple-400">{myshare}</div>
           </div>
         </div>
 

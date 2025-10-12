@@ -35,7 +35,7 @@ export default function RewardsPage() {
         <div className="space-y-8">
             <div className="text-center">
                 <h1 className="text-4xl font-bold neon-text mb-2">空投奖励</h1>
-                <p className="text-gray-400 text-lg">参与活动，获得免费代币奖励</p>
+                <p className="text-muted-foreground">参与活动，获得免费代币奖励</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -63,12 +63,12 @@ export default function RewardsPage() {
                 {rewardDataList.map(item => <RewardCard key={item.title} title={item.title} subtitle={item.subtitle} totalReward={item.totalReward} reward={item.reward}
                     totalheadCount={item.totalheadCount} deadline={item.deadline} badge={item.badge} reuqireConList={item.reuqireConList} />)}
             </div>)}
-            {walletConnected && (<GlowCard>
+            {walletConnected && (<div className="relative rounded-2xl p-[1px] bg-gradient-to-br from-cyan-400/20 via-fuchsia-400/10 to-indigo-400/20 hover:glow-purple transition-all duration-300">
                 <div className="p-5">
                     <div className="text-black font-extrabold text-lg mb-3"><Trophy className="w-6 h-6 mr-1 inline-block" />空投排行榜</div>
                     <div className="divide-y divide-white/10 space-y-4">
                         {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                            <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border">
                                 <div className="flex items-center gap-3">
                                     {/* <div className="text-3xl">🥇</div> */}
                                     <Medal className="w-6 h-6 mr-1 text-yellow-500" />
@@ -82,7 +82,7 @@ export default function RewardsPage() {
                         ))}
                     </div>
                 </div>
-            </GlowCard>)}
+            </div>)}
         </div>
     )
 }

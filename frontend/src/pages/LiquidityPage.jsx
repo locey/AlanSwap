@@ -12,10 +12,10 @@ export default function LiquidityPage({ stats }) {
         setCurrentPool(cPool);
     }
     const [poolDatalist] = useState([
-        { pair: "ETH/USDC", tvl: "$5.8M", vol: "$1.2M", fee: "0.05%", apy: "24.5%", badge: '🔷💵' },
-        { pair: "WBTC/ETH", tvl: "$3.2M", vol: "$890K", fee: "0%", apy: "18.7%", badge: '₿🔷' },
-        { pair: "UNI/USDC", tvl: "$1.8M", vol: "$450K", fee: "0%", apy: "12.1%", badge: '🦄💵' },
-        { pair: "LINK/ETH", tvl: "$980K", vol: "$230K", fee: "0%", apy: "20.1%", badge: '🔗🔷' }
+        { pair: "ETH/USDC", tvl: "$5.8M", vol: "$1.2M", fee: "$3,600", myshare: "0.05%", apy: "24.5%", badge: '🔷💵' },
+        { pair: "WBTC/ETH", tvl: "$3.2M", vol: "$890K", fee: "$2,670", myshare: "0.05%", apy: "18.7%", badge: '₿🔷' },
+        { pair: "UNI/USDC", tvl: "$1.8M", vol: "$450K", fee: "$1,350", myshare: "0.05%", apy: "12.1%", badge: '🦄💵' },
+        { pair: "LINK/ETH", tvl: "$980K", vol: "$230K", fee: "$690", myshare: "0%", apy: "20.1%", badge: '🔗🔷' }
     ])
     const setConnectWallet = ()=>{
         console.log(999)
@@ -25,7 +25,7 @@ export default function LiquidityPage({ stats }) {
         <div className="space-y-8">
             <div className="text-center">
                 <h1 className="text-4xl font-bold neon-text mb-2">流动性池</h1>
-                <p className="text-gray-400 text-lg">提供流动性，赚取交易手续费</p>
+                <p className="text-muted-foreground">提供流动性，赚取交易手续费</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -48,9 +48,9 @@ export default function LiquidityPage({ stats }) {
                 title={currentPool === "allPool" ? "连接钱包开始提供流动性" : "连接钱包查看您的流动性"}
                 description={currentPool === "allPool" ? "连接您的钱包以添加流动性并赚取手续费" : "连接钱包以查看和管理您的流动性池"}
             /> : (<div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
-                {poolDatalist.map(item => <PoolCard key={item.pair} pair={item.pair} tvl={item.tvl} vol={item.vol} fee={item.fee} apy={item.apy} badge={item.badge} />)}
+                {poolDatalist.map(item => <PoolCard key={item.pair} pair={item.pair} tvl={item.tvl} vol={item.vol} fee={item.fee} myshare={item.myshare} apy={item.apy} badge={item.badge} />)}
             </div>)}
-            {walletConnected && (<GlowCard>
+            {walletConnected && (<div className="relative rounded-2xl p-[1px] bg-gradient-to-br from-cyan-400/20 via-fuchsia-400/10 to-indigo-400/20 hover:glow-purple transition-all duration-300">
                 <h3 className="mt-2 ml-6">流动性统计</h3>
                 <div className="p-5 grid md:grid-cols-2 gap-6 text-sm">
                     <div>
@@ -83,7 +83,7 @@ export default function LiquidityPage({ stats }) {
                         </div>
                     </div>
                 </div>
-            </GlowCard>)}
+            </div>)}
         </div>
     )
 }
