@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
-import CryptoSwapDEX from './pages/CryptoSwapDEX'
 import ConnectWalletButton from './pages/ConnectWalletButton';
-import { ethers } from 'ethers';
 import BackgroundStars from './pages/BackgroundStars';
 import NotificationContainer from './pages/NotificationContainer';
 import SwapPage from './pages/SwapPage';
 import LiquidityPage from './pages/LiquidityPage';
 import MiningPage from './pages/MiningPage';
 import RewardsPage from './pages/RewardsPage';
-import { useWallet } from './pages/useWallet';
-
-/* export default function App() {
-  return (
-    <CryptoSwapDEX />
-  )
-} */
 
 // 路由组件
 const Router = ({ children, cRoute }) => {
@@ -31,8 +22,6 @@ const Route = ({ path, children }) => {
 };
 
 export default function App() {
-
-  // const { walletConnected, setWalletConnected, address, chainId, setAddress, setChainId } = useWallet();
   const [currentRoute, setCurrentRoute] = useState('/swap');
   const [notifications, setNotifications] = useState([]);
   // 显示通知
