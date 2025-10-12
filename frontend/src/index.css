@@ -148,6 +148,13 @@
   box-shadow: 0 20px 40px #0000004d, 0 0 40px #3b82f633;
 }
 
+.text-muted-foreground {
+  color: oklch(55.6% 0 0);
+}
+.text-glow {
+  text-shadow: 0 0 10px;
+}
+
 .duration-300 {
   --tw-duration: .3s;
   transition-duration: .3s;
