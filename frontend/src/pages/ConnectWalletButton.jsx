@@ -76,7 +76,7 @@ export default function ConnectWalletButton() {
             if (addr) {
                 // 调用后端接口获取 nonce
                 try {
-                    // setWalletConnected(true)
+                    // setWalletConnected(true)        //TODO---调试需要可放开,生产请删除---yuyue3
                     const res = await fetchNonce(addr);
                     const nonce = res.data.nonce;
                     // 使用 ethers.providers 对 nonce 消息进行签名
