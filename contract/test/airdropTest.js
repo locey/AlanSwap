@@ -20,7 +20,8 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
 
   // 测试常量（Ethers v6：使用 ethers.parseEther 替代 ethers.utils.parseEther）
   const INITIAL_TOKEN_SUPPLY = ethers.parseEther("1000000"); // 100万枚
-  const AIRDROP_TOTAL_REWARD = ethers.parseEther("1000"); // 空投总奖励
+  const AIRDROP_TOTAL_REWARD = ethers.parseEther("600"); // 空投总奖励  100+200+300
+  const TREE_VERSION = 1; //默克尔树版本号
   const START_TIME = Math.floor(Date.now() / 1000) + 60; // 1分钟后开始
   const END_TIME = START_TIME + 86400; // 24小时后结束
 
@@ -30,6 +31,7 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
   let rootHash;
 
   beforeEach(async function () {
+
     console.log("\n==============================================");
     console.log("📦 开始部署测试合约...");
     console.log("==============================================\n");
@@ -176,23 +178,13 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
       throw new Error("❌ 无有效叶子节点，无法构建默克尔树");
     }
 
-    // 4. 构建默克尔树（使用 keccak256 哈希函数，显式开启排序）
-    // merkleTree = new MerkleTree(validLeaves, (data) => {
-    //   // data 是 Buffer 类型，需转为 0x 前缀字符串后计算哈希
-    //   const hexStr = `0x${data.toString("hex")}`;
-    //   return keccak256(hexStr); // ethers.keccak256 会返回 0x 前缀字符串
-    // }, {
-    //   sort: true,
-    //   sortLeaves: true
-    // });
-
     merkleTree = new MerkleTree(validLeaves, keccak256, {
       sort: true,
       sortLeaves: true,
       sortPairs: true
     });
 
-    // 5. 生成根哈希（转为 0x 前缀字符串，适配合约 bytes32 类型）
+    // 4. 生成根哈希（转为 0x 前缀字符串，适配合约 bytes32 类型）
     const rootBuffer = merkleTree.getRoot();
     rootHash = `0x${rootBuffer.toString("hex")}`;
     console.log(`   默克尔树根哈希: ${rootHash}`);
@@ -252,10 +244,11 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
         rootHash,
         AIRDROP_TOTAL_REWARD,// 与转入金额一致
         START_TIME,
-        END_TIME
+        END_TIME,
+        TREE_VERSION // 新增：树版本号
       ))
         .to.emit(merkleAirdrop, "AirdropCreated")
-        .withArgs(0, "测试空投", rootHash, AIRDROP_TOTAL_REWARD);
+        .withArgs(0, "测试空投", rootHash, AIRDROP_TOTAL_REWARD, TREE_VERSION);
 
       // 验证活动信息
       const info = await merkleAirdrop.getAirdropInfo(0);
@@ -279,7 +272,8 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
         rootHash,
         AIRDROP_TOTAL_REWARD,
         START_TIME,
-        END_TIME
+        END_TIME,
+        TREE_VERSION
       );
 
       // 快速调整时间到活动开始后（Ethers v6 中 provider 方法不变）
@@ -316,7 +310,8 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
         rootHash,
         AIRDROP_TOTAL_REWARD,
         startTime,
-        endTime
+        endTime,
+        TREE_VERSION
       );
       console.log(`   ✅ 空投创建完成（ID: 0，开始时间: ${new Date(startTime * 1000).toLocaleString()}）`);
 
@@ -340,26 +335,27 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
       console.log("\n📝 测试用例1：用户1成功领取奖励");
       const [user1Data] = testAccounts; // 取第一个测试账户（user1）
       const userAddr = user1Data.address;
-      const claimAmt = user1Data.amount;
+      const totalReward = user1Data.amount; // 用户总奖励
+      const claimAmt = totalReward;
       const userSigner = await ethers.provider.getSigner(userAddr); // 获取用户1的签名器
 
-      // 1. 关键：通过合约辅助函数生成用户1的 leaf（与合约验证逻辑完全一致）
+      // 1. 生成默克尔证明
       const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, claimAmt);
       console.log(`   🧑 用户信息：地址=${userAddr}，领取金额=${ethers.formatEther(claimAmt)} CSWAP`);
       console.log(`   🍃 合约生成的用户 leaf：${userLeaf}`);
 
-      // 2. 生成默克尔证明（基于合约返回的 leaf）
+
       const leafBuffer = Buffer.from(userLeaf.slice(2), "hex"); // 转为 Buffer 适配 merkletreejs
       const proof = merkleTree.getProof(leafBuffer);
       const proofHex = proof.map(node => `0x${node.data.toString("hex")}`); // 转为合约需要的 bytes32[] 格式
 
-      // 3. 验证证明有效性（长度≠0，避免空证明）
+      // 验证证明有效性（长度≠0，避免空证明）
       if (proofHex.length === 0) {
         throw new Error("❌ 生成的默克尔证明为空，请检查 leaf 是否在默克尔树中");
       }
       console.log(`   📄 生成的默克尔证明：${JSON.stringify(proofHex)}（长度：${proofHex.length}）`);
 
-      // 4. 调整区块时间到空投有效期内（避免“时间未到”错误）
+      // 2. 调整时间到有效期内
       const targetTime = this.airdropStartTime + 5; // 开始时间后5秒（确保在有效期内）
       await ethers.provider.send("evm_setNextBlockTimestamp", [targetTime]);
       await ethers.provider.send("evm_mine"); // 生成新区块，使时间调整生效
@@ -369,65 +365,231 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
 
 
       // await ethers.provider.send("evm_setNextBlockTimestamp", [targetTime]); // 再次固定时间（防止自动递增）
+      // 3. 领取前验证：用户无奖励记录
+      const [initialTotal, initialClaimed, initialPending, hasRecord] =
+        await merkleAirdrop.getUserRewardStatus(0, userAddr);
+      expect(hasRecord).to.be.false;
+      expect(initialTotal).to.equal(0);
+      expect(initialClaimed).to.equal(0);
+      console.log(`   ✅ 领取前：无奖励记录`);
 
 
-      // 5. 记录领取前用户余额（验证后续余额增加）
+      // 记录领取前用户余额（验证后续余额增加）
       const beforeBal = await cswapToken.balanceOf(userAddr);
       console.log(`   💰 领取前用户余额：${ethers.formatEther(beforeBal)} CSWAP`);
 
-      // 6. 调用领取函数 + 验证事件
-      await expect(merkleAirdrop.connect(userSigner).claimReward(
-      0,          // 空投ID（对应创建的第一个空投）
-      claimAmt,   // 领取金额（必须与默克尔树中一致）
-      proofHex    // 默克尔证明（bytes32[] 格式）
-      ))
-      .to.emit(merkleAirdrop, "RewardClaimed") // 验证领取事件触发
-      .withArgs(0, userAddr, claimAmt, targetTime); // 验证事件参数（匹配合约事件定义）
 
-    
-      // 7. 验证领取结果（余额增加量=领取金额）
+      // 4. 调用领取函数 + 验证事件
+      await expect(merkleAirdrop.connect(userSigner).claimReward(
+        0,          // 空投ID（对应创建的第一个空投）
+        claimAmt,   // 领取金额（必须与默克尔树中一致）
+        totalReward, // 总奖励（首次领取需传递用于验证）
+        proofHex    // 默克尔证明（bytes32[] 格式）
+      ))
+        .to.emit(merkleAirdrop, "RewardClaimed") // 验证领取事件触发
+        .withArgs(
+          0,
+          userAddr,
+          claimAmt,
+          totalReward,
+          claimAmt,    // 事件包含更新后已领取
+          0,           // 事件包含更新后待领取（总-已领）
+          targetTime); // 验证事件参数（匹配合约事件定义）
+
+
+      // 5. 验证领取结果（余额增加量=领取金额）
       const afterBal = await cswapToken.balanceOf(userAddr);
       const balanceDiff = afterBal - beforeBal;
       expect(balanceDiff).to.equal(claimAmt, "❌ 用户余额增加量与领取金额不符");
       console.log(`   💰 领取后用户余额：${ethers.formatEther(afterBal)} CSWAP`);
       console.log(`   💰 余额增加量：${ethers.formatEther(balanceDiff)} CSWAP`);
 
-      // 8. 验证合约状态更新（已领取标记、已领取总金额）
-      const isClaimed = await merkleAirdrop.claimed(0, userAddr); 
+
+
+      // 6. 核心验证：奖励记录正确存储（使用合约的getUserRewardStatus）
+      const [userTotal, userClaimed, userPending, userHasRecord] =
+        await merkleAirdrop.getUserRewardStatus(0, userAddr);
+
+      expect(userHasRecord).to.be.true;
+      expect(userTotal).to.equal(totalReward, "总奖励记录错误");
+      expect(userClaimed).to.equal(claimAmt, "已领取记录错误");
+      expect(userPending).to.equal(userTotal - userClaimed, "待领取计算错误");
+
+      console.log(`   ✅ 奖励记录验证通过：`);
+      console.log(`      总奖励: ${ethers.formatEther(userTotal)}`);
+      console.log(`      已领取: ${ethers.formatEther(userClaimed)}`);
+      console.log(`      待领取: ${ethers.formatEther(userPending)}`);
+
+      // 7. 验证合约状态更新（已领取标记、已领取总金额）
+      const isClaimed = await merkleAirdrop.claimed(0, userAddr);
       const airdropInfo = await merkleAirdrop.getAirdropInfo(0);
       expect(isClaimed).to.be.true, "❌ 合约未标记用户为已领取";
       expect(airdropInfo.claimedReward).to.equal(claimAmt, "❌ 合约已领取总金额未更新");
       console.log(`   ✅ 合约状态验证通过：用户已标记为已领取，已领取总金额=${ethers.formatEther(airdropInfo.claimedReward)} CSWAP`);
     });
 
-    // 用例2：用户重复领取奖励，应失败
-    it("不能重复领取奖励（重复调用应回滚）", async function () {
-      console.log("\n📝 测试用例2：用户1重复领取失败");
-      const [user1Data] = testAccounts;
-      const userAddr = user1Data.address;
-      const claimAmt = user1Data.amount;
-      const userSigner = await ethers.provider.getSigner(userAddr);
 
-      // 1. 生成证明（与用例1一致）
-      const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, claimAmt);
-      const leafBuffer = Buffer.from(userLeaf.slice(2), "hex");
-      const proofHex = merkleTree.getProof(leafBuffer).map(node => `0x${node.data.toString("hex")}`);
+    it("用户多次领取应正确更新奖励记录", async function () {
 
-      // 2. 调整时间到有效期内
-      await ethers.provider.send("evm_setNextBlockTimestamp", [this.airdropStartTime + 5]);
-      await ethers.provider.send("evm_mine");
+      // 存储测试步骤日志的数组
+      const airdropId = 0;
+      const stepLogs = [];
+      let currentStep = 0;
 
-      // 3. 第一次领取（成功）
-      await merkleAirdrop.connect(userSigner).claimReward(0, claimAmt, proofHex);
-      console.log(`   ✅ 第一次领取成功`);
+      // 辅助函数：记录步骤日志
+      const logStep = (message) => {
+        currentStep++;
+        const stepLog = `   [步骤${currentStep}] ${message}`;
+        stepLogs.push(stepLog);
+        console.log(stepLog);
+      };
 
-      // 4. 第二次领取（应失败，理由：Already claimed）
-      await expect(merkleAirdrop.connect(userSigner).claimReward(0, claimAmt, proofHex))
-        .to.be.revertedWith("Already claimed"); // 验证回滚理由
-      console.log(`   ✅ 第二次领取失败（符合预期：已领取用户不能重复领取）`);
+      try {
+
+        console.log("\n📝 测试用例2：用户2多次领取及记录更新");
+        const [, user2Data] = testAccounts;
+        const userAddr = user2Data.address;
+        const totalReward = user2Data.amount;
+        const firstClaim = ethers.parseEther("100"); // 首次领取100
+        const secondClaim = ethers.parseEther("100"); // 第二次领取100
+        const userSigner = await ethers.provider.getSigner(userAddr);
+        logStep(`开始测试用户多次领取逻辑，用户地址: ${userAddr}`);
+
+        // 生成默克尔证明
+        const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, totalReward);
+        const leafBuffer = Buffer.from(userLeaf.slice(2), "hex");
+        const proofHex = merkleTree.getProof(leafBuffer).map(node => `0x${node.data.toString("hex")}`);
+        logStep(`生成用户叶子节点: ${userLeaf.slice(0, 10)}...（完整长度: ${userLeaf.length}）`);
+        logStep(`生成默克尔证明，长度: ${proofHex.length}`);
+
+        // 首次领取
+        await ethers.provider.send("evm_setNextBlockTimestamp", [this.airdropStartTime + 5]);
+        await ethers.provider.send("evm_mine");
+        await merkleAirdrop.connect(userSigner).claimReward(airdropId, firstClaim, totalReward, proofHex);
+
+        // 验证首次领取后记录
+        const [firstTotal, firstClaimed, firstPending, userHasRecord] = await merkleAirdrop.getUserRewardStatus(airdropId, userAddr);
+
+        //先输出结果
+        console.log(`   ✅ 领取记录: 总额 ${ethers.formatEther(firstTotal)} CSWAP, 已领取 ${ethers.formatEther(firstClaimed)} CSWAP, 待领取 ${ethers.formatEther(firstPending)} CSWAP`);
+
+
+        expect(firstClaimed).to.equal(firstClaim);
+        expect(firstPending).to.equal(totalReward - firstClaim);
+        console.log(`   📊 首次领取后：已领=${ethers.formatEther(firstClaimed)}, 待领=${ethers.formatEther(firstPending)}`);
+
+
+        // 方法A：如果合约允许非首次领取不提供证明（推荐）
+        try {
+          await ethers.provider.send("evm_setNextBlockTimestamp", [this.airdropStartTime + 10]);
+          await ethers.provider.send("evm_mine");
+          const secondTx = await merkleAirdrop.connect(userSigner).claimReward(
+            airdropId,
+            secondClaim,
+            totalReward,
+            [] // 空证明（如果合约支持）
+          );
+          await secondTx.wait();
+          console.log(`   ✅ 第二次领取成功（使用空证明）`);
+        }
+        // 方法B：如果合约要求非首次领取仍需提供证明（兼容处理）
+        catch (error) {
+          if (error.message.includes("Invalid merkle proof")) {
+            console.log(`   ⚠️  合约要求非首次领取仍需证明，使用原始证明重试...`);
+            const secondTx = await merkleAirdrop.connect(userSigner).claimReward(
+              airdropId,
+              secondClaim,
+              totalReward,
+              proofHex // 重新使用原始证明
+            );
+            await secondTx.wait();
+            console.log(`   ✅ 第二次领取成功（使用原始证明）`);
+          } else {
+            throw error; // 其他错误抛出
+          }
+        }
+
+        // 验证第二次领取后记录
+        [total, claimed, pending] = await merkleAirdrop.getUserRewardStatus(airdropId, userAddr);
+        expect(claimed).to.equal(firstClaim + secondClaim);
+        expect(pending).to.equal(totalReward - claimed);
+        console.log(`   📊 第二次领取后：已领=${ethers.formatEther(claimed)}, 待领=${ethers.formatEther(pending)}`);
+      } catch (error) {
+        // 测试失败时，先打印已完成的步骤日志
+        console.log("\n❌ 测试失败！已完成的步骤如下：");
+        stepLogs.forEach(log => console.log(log));
+        console.log(`\n具体错误: ${error.message}`);
+        // 重新抛出错误，让测试框架捕获（保持测试失败状态）
+        throw error;
+      }
+
     });
 
-    // 用例3：用户在空投开始前领取，应失败
+
+    // // 用例2：用户重复领取奖励，应失败
+    // it("不能重复领取奖励（重复调用应回滚）", async function () {
+    //   console.log("\n📝 测试用例2：用户1重复领取失败");
+    //   const [user1Data] = testAccounts;
+    //   const userAddr = user1Data.address;
+    //   const claimAmt = user1Data.amount;
+    //   const userSigner = await ethers.provider.getSigner(userAddr);
+
+    //   // 1. 生成证明（与用例1一致）
+    //   const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, claimAmt);
+    //   const leafBuffer = Buffer.from(userLeaf.slice(2), "hex");
+    //   const proofHex = merkleTree.getProof(leafBuffer).map(node => `0x${node.data.toString("hex")}`);
+
+    //   // 2. 调整时间到有效期内
+    //   await ethers.provider.send("evm_setNextBlockTimestamp", [this.airdropStartTime + 5]);
+    //   await ethers.provider.send("evm_mine");
+
+    //   // 3. 第一次领取（成功）
+    //   await merkleAirdrop.connect(userSigner).claimReward(0, claimAmt, proofHex);
+    //   console.log(`   ✅ 第一次领取成功`);
+
+    //   // 4. 第二次领取（应失败，理由：Already claimed）
+    //   await expect(merkleAirdrop.connect(userSigner).claimReward(0, claimAmt, proofHex))
+    //     .to.be.revertedWith("Already claimed"); // 验证回滚理由
+    //   console.log(`   ✅ 第二次领取失败（符合预期：已领取用户不能重复领取）`);
+    // });
+
+
+
+    it("领取金额超过待领取奖励应失败", async function () {
+      console.log("\n📝 测试用例3：领取金额超过待领取奖励");
+      const [, , user3Data] = testAccounts;
+      const userAddr = user3Data.address;
+      const totalReward = user3Data.amount;
+      const firstClaim = ethers.parseEther("200");
+      const invalidClaim = ethers.parseEther("200"); // 剩余100，尝试领取200
+      const userSigner = await ethers.provider.getSigner(userAddr);
+
+      // 生成证明并首次领取
+      const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, totalReward);
+      const proofHex = merkleTree.getProof(Buffer.from(userLeaf.slice(2), "hex")).map(node => `0x${node.data.toString("hex")}`);
+
+      await ethers.provider.send("evm_setNextBlockTimestamp", [this.airdropStartTime + 5]);
+      await ethers.provider.send("evm_mine");
+      await merkleAirdrop.connect(userSigner).claimReward(0, firstClaim, totalReward, proofHex);
+      console.log(`   ✅ 首次领取 ${ethers.formatEther(firstClaim)} CSWAP`);
+
+      // 验证当前待领取金额
+      const [, , pending] = await merkleAirdrop.getUserRewardStatus(0, userAddr);
+      console.log(`   📊 当前待领取：${ethers.formatEther(pending)} CSWAP`);
+      console.log(`   ❌ 尝试领取：${ethers.formatEther(invalidClaim)} CSWAP（超过待领取）`);
+
+      // 尝试超额领取
+      await expect(
+        merkleAirdrop.connect(userSigner).claimReward(0, invalidClaim, totalReward, [])
+      ).to.be.revertedWith("MerkleAirdrop: claim amount exceed pending reward");
+
+      // 验证记录未变
+      const [, claimedAfter] = await merkleAirdrop.getUserRewardStatus(0, userAddr);
+      expect(claimedAfter).to.equal(firstClaim);
+    });
+
+  
+    // 用例：用户在空投开始前领取，应失败
     it("不能在空投开始前领取（时间未到应回滚）", async function () {
       console.log("\n📝 测试用例3：空投开始前领取失败");
       const [user1Data] = testAccounts;
@@ -479,8 +641,66 @@ describe("MerkleAirdrop + RewardPool 完整测试", function () {
         .to.be.revertedWith("Invalid merkle proof"); // 验证回滚理由
       console.log(`   ✅ 无效证明领取失败（符合预期：证明与用户不匹配）`);
     });
-
-
   });
 
+
+
+  describe("异常场景测试", function () {
+    beforeEach(async function () {
+      // 前置创建并激活空投
+      await merkleAirdrop.createAirdrop(
+        "异常测试空投",
+        rootHash,
+        AIRDROP_TOTAL_REWARD,
+        START_TIME,
+        END_TIME,
+        TREE_VERSION
+      );
+      await ethers.provider.send("evm_setNextBlockTimestamp", [START_TIME]);
+      await ethers.provider.send("evm_mine");
+      await merkleAirdrop.activateAirdrop(0);
+    });
+
+    // it("使用错误的总奖励金额领取应失败", async function () {
+    //   console.log("\n📝 异常测试：错误的总奖励金额");
+    //   const [user1Data] = testAccounts;
+    //   const userAddr = user1Data.address;
+    //   const realTotal = user1Data.amount;
+    //   const fakeTotal = ethers.parseEther("50"); // 错误的总奖励
+    //   const userSigner = await ethers.provider.getSigner(userAddr);
+
+    //   // 生成基于真实总奖励的证明
+    //   const userLeaf = await merkleAirdrop.calculateLeafHash(userAddr, realTotal);
+    //   const proofHex = merkleTree.getProof(Buffer.from(userLeaf.slice(2), "hex")).map(node => `0x${node.data.toString("hex")}`);
+
+    //   // 尝试用错误的总奖励领取
+    //   await expect(
+    //     merkleAirdrop.connect(userSigner).claimReward(0, fakeTotal, fakeTotal, proofHex)
+    //   ).to.be.revertedWith("MerkleAirdrop: invalid merkle proof");
+
+    //   // 验证无记录
+    //   const [, , , hasRecord] = await merkleAirdrop.getUserRewardStatus(0, userAddr);
+    //   expect(hasRecord).to.be.false;
+    // });
+
+    it("非白名单用户领取应失败", async function () {
+      console.log("\n📝 异常测试：非白名单用户领取");
+      const nonWhitelistAddr = "0x1234567890123456789012345678901234567890"; // 不在测试列表中
+      const fakeTotal = ethers.parseEther("100");
+
+      // 生成虚假证明
+      const fakeLeaf = ethers.solidityPackedKeccak256(["address", "uint256"], [nonWhitelistAddr, fakeTotal]);
+      const fakeProof = merkleTree.getProof(Buffer.from(fakeLeaf.slice(2), "hex")); // 无效证明
+      const fakeProofHex = fakeProof.map(node => node ? `0x${node.data.toString("hex")}` : "0x");
+
+      // 尝试领取
+      await expect(
+        merkleAirdrop.claimReward(0, fakeTotal, fakeTotal, fakeProofHex)
+      ).to.be.revertedWith("MerkleAirdrop: invalid merkle proof");
+
+      // 验证无记录
+      const [, , , hasRecord] = await merkleAirdrop.getUserRewardStatus(0, nonWhitelistAddr);
+      expect(hasRecord).to.be.false;
+    });
+  });
 });

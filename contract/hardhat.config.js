@@ -39,7 +39,7 @@ module.exports = {
     }
   },
   etherscan: {
-    // 如果您想验证合约，需要配置 Etherscan API 密钥
+    // 如果想验证合约，需要配置 Etherscan API 密钥
     apiKey: process.env.ETHERSCAN_API_KEY || ""
   },
   gasReporter: {
