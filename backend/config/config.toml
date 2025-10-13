@@ -3,8 +3,8 @@ name = "alanswap"
 port="8000"
 apiPort = "8100"
 version = "v1"
-jwtSecret = "xxx"
-jwtttl = "12"
+jwtSecret = "xxx"  # jwt secret
+jwtTtl = 12  # token ttl in hours
 
 
 [pgsql]
