@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import ConnectWalletButton from './pages/ConnectWalletButton';
 import BackgroundStars from './pages/BackgroundStars';
-import NotificationContainer from './pages/NotificationContainer';
 import SwapPage from './pages/SwapPage';
 import LiquidityPage from './pages/LiquidityPage';
 import MiningPage from './pages/MiningPage';
@@ -23,17 +23,7 @@ const Route = ({ path, children }) => {
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState('/swap');
-  const [notifications, setNotifications] = useState([]);
-  // 显示通知
-  const showNotification = (message, type = 'info') => {
-    const id = Date.now();
-    const notification = { id, message, type };
-    setNotifications(prev => [...prev, notification]);
 
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 3000);
-  };
   // 统计数据状态
   const [stats, setStats] = useState({
     liquidity: 2648.50,
@@ -47,7 +37,31 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white relative overflow-x-hidden">
       <BackgroundStars />
-      <NotificationContainer notifications={notifications} />
+
+      {/* React Hot Toast 通知系统 */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#1e293b',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
 
       <header className="flex flex-col lg:flex-row justify-between items-center bg-black p-2 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center gap-2">
