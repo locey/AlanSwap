@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine  # 使用轻量级的 PostgreSQL 镜像
+    container_name: postgres
+    environment:
+      POSTGRES_DB: alanswap
+      POSTGRES_USER: alanuser
+      POSTGRES_PASSWORD: alanpasswd
+      POSTGRES_HOST_AUTH_METHOD: trust  # 或者使用 md5/scram-sha-256
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: |
+      postgres 
+      -c shared_preload_libraries=pg_stat_statements 
+      -c pg_stat_statements.track=all 
+      -c max_connections=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U easyuser -d easyswap"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine  # 使用较新版本的 Redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass "redispasswd"  # 可选：设置 Redis 密码
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:

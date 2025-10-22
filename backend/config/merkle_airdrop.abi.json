@@ -1,0 +1,58 @@
+[
+  {
+    "type": "event",
+    "name": "AirdropCreated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "airdropId", "type": "uint256", "indexed": true },
+      { "name": "name", "type": "string", "indexed": false },
+      { "name": "merkleRoot", "type": "bytes32", "indexed": false },
+      { "name": "totalReward", "type": "uint256", "indexed": false },
+      { "name": "treeVersion", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AirdropActivated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "airdropId", "type": "uint256", "indexed": true }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RewardClaimed",
+    "anonymous": false,
+    "inputs": [
+      { "name": "airdropId", "type": "uint256", "indexed": true },
+      { "name": "user", "type": "address", "indexed": true },
+      { "name": "claimAmount", "type": "uint256", "indexed": false },
+      { "name": "totalReward", "type": "uint256", "indexed": false },
+      { "name": "claimedReward", "type": "uint256", "indexed": false },
+      { "name": "pendingReward", "type": "uint256", "indexed": false },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "UpdateTotalRewardUpdated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "airdropId", "type": "uint256", "indexed": true },
+      { "name": "user", "type": "address", "indexed": true },
+      { "name": "totalReward", "type": "uint256", "indexed": false },
+      { "name": "claimedReward", "type": "uint256", "indexed": false },
+      { "name": "pendingReward", "type": "uint256", "indexed": false },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RewardPoolUpdated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "oldPool", "type": "address", "indexed": true },
+      { "name": "newPool", "type": "address", "indexed": true }
+    ]
+  }
+]
