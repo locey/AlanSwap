@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
-import ConnectWalletButton from './pages/ConnectWalletButton';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BackgroundStars from './pages/BackgroundStars';
 import SwapPage from './pages/SwapPage';
 import LiquidityPage from './pages/LiquidityPage';
@@ -92,7 +92,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-4">
-            <ConnectWalletButton />
+            <ConnectButton />
           </div>
         </div>
       </header>

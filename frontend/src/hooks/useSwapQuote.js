@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import BigNumber from 'bignumber.js';
 import { useRouterContract } from './useContract';
+import { useAccount } from 'wagmi';
+import { getAddressesByChainId } from '../contracts/addresses';
 import {
   parseTokenAmount,
   formatTokenAmount,
@@ -32,6 +34,7 @@ export const useSwapQuote = (
   slippage = 0.5
 ) => {
   const router = useRouterContract(false);
+  const { chain } = useAccount();
 
   const [outputAmount, setOutputAmount] = useState('0');
   const [formattedOutputAmount, setFormattedOutputAmount] = useState('0');
@@ -68,8 +71,19 @@ export const useSwapQuote = (
         return;
       }
 
+      // 获取 WETH 地址
+      const addresses = getAddressesByChainId(chain?.id || 1);
+      const WETH = addresses.WETH;
+
+      // 将 ETH 零地址替换为 WETH 地址
+      const isInputETH = inputToken === '0x0000000000000000000000000000000000000000';
+      const isOutputETH = outputToken === '0x0000000000000000000000000000000000000000';
+
+      const tokenIn = isInputETH ? WETH : inputToken;
+      const tokenOut = isOutputETH ? WETH : outputToken;
+
       // 构建交换路径
-      const path = [inputToken, outputToken];
+      const path = [tokenIn, tokenOut];
 
       // 调用 Router 合约的 getAmountsOut
       const amounts = await router.getAmountsOut(amountIn, path);
@@ -106,6 +120,7 @@ export const useSwapQuote = (
     }
   }, [
     router,
+    chain,
     inputToken,
     outputToken,
     inputAmount,

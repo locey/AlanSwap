@@ -83,6 +83,19 @@ export default function SwapPage() {
     setInputAmount(''); // 清空输入
   };
 
+  // 检查是否是 ETH <-> WETH 组合
+  const isETHWETHPair = () => {
+    const ethAddresses = ['0x0000000000000000000000000000000000000000'];
+    const wethAddress = tokens.find(t => t.symbol === 'WETH')?.address.toLowerCase();
+
+    const inputIsETH = ethAddresses.includes(inputToken.address.toLowerCase());
+    const outputIsWETH = outputToken.address.toLowerCase() === wethAddress;
+    const inputIsWETH = inputToken.address.toLowerCase() === wethAddress;
+    const outputIsETH = ethAddresses.includes(outputToken.address.toLowerCase());
+
+    return (inputIsETH && outputIsWETH) || (inputIsWETH && outputIsETH);
+  };
+
   // 快速设置输入金额
   const setMaxAmount = () => {
     if (inputFormattedBalance) {
@@ -158,7 +171,8 @@ export default function SwapPage() {
     parseFloat(inputAmount) > 0 &&
     outputAmount &&
     outputAmount !== '0' &&
-    parseFloat(inputFormattedBalance) >= parseFloat(inputAmount);
+    parseFloat(inputFormattedBalance) >= parseFloat(inputAmount) &&
+    !isETHWETHPair(); // 禁止 ETH <-> WETH 直接交换
 
   const priceImpactWarning = parseFloat(priceImpact) > 5;
 
@@ -327,8 +341,15 @@ export default function SwapPage() {
           </div>
         )}
 
+        {/* ETH <-> WETH 提示 */}
+        {isETHWETHPair() && (
+          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
+            ETH 和 WETH 是 1:1 包装关系，请使用 Wrap/Unwrap 功能（暂不支持通过 Swap）
+          </div>
+        )}
+
         {/* 错误提示 */}
-        {quoteError && inputAmount && (
+        {quoteError && inputAmount && !isETHWETHPair() && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
             {parseError({ message: quoteError })}
           </div>
@@ -352,6 +373,8 @@ export default function SwapPage() {
         >
           {!address
             ? '请先连接钱包'
+            : isETHWETHPair()
+            ? '不支持 ETH/WETH 直接交换'
             : !inputAmount || parseFloat(inputAmount) === 0
             ? '输入金额'
             : parseFloat(inputFormattedBalance) < parseFloat(inputAmount)

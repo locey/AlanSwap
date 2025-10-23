@@ -18,7 +18,7 @@ import { getAddressesByChainId } from '../contracts/addresses';
 /**
  * 将 Viem WalletClient 转换为 ethers Signer
  */
-function walletClientToSigner(walletClient) {
+async function walletClientToSigner(walletClient) {
   const { account, chain, transport } = walletClient;
   const network = {
     chainId: chain.id,
@@ -26,7 +26,7 @@ function walletClientToSigner(walletClient) {
     ensAddress: chain.contracts?.ensRegistry?.address,
   };
   const provider = new ethers.BrowserProvider(transport, network);
-  const signer = provider.getSigner(account.address);
+  const signer = await provider.getSigner(account.address);
   return signer;
 }
 
@@ -60,8 +60,10 @@ export const useContract = (address, abi, withSigner = false) => {
 
     try {
       if (withSigner && walletClient) {
-        const signer = walletClientToSigner(walletClient);
-        return new ethers.Contract(address, abi, signer);
+        // 对于需要签名的操作，返回一个 Promise
+        return walletClientToSigner(walletClient).then(signer =>
+          new ethers.Contract(address, abi, signer)
+        );
       }
 
       if (publicClient) {
@@ -126,23 +128,26 @@ export const useMultipleERC20Contracts = (tokenAddresses = [], withSigner = fals
     if (!tokenAddresses.length) return [];
 
     try {
-      const contracts = tokenAddresses.map((address) => {
-        if (!address) return null;
-
-        if (withSigner && walletClient) {
-          const signer = walletClientToSigner(walletClient);
+      if (withSigner && walletClient) {
+        // 返回 Promise 数组
+        const contracts = tokenAddresses.map(async (address) => {
+          if (!address) return null;
+          const signer = await walletClientToSigner(walletClient);
           return new ethers.Contract(address, ERC20ABI, signer);
-        }
+        });
+        return Promise.all(contracts);
+      }
 
-        if (publicClient) {
-          const provider = publicClientToProvider(publicClient);
+      if (publicClient) {
+        const provider = publicClientToProvider(publicClient);
+        const contracts = tokenAddresses.map((address) => {
+          if (!address) return null;
           return new ethers.Contract(address, ERC20ABI, provider);
-        }
+        });
+        return contracts.filter(Boolean);
+      }
 
-        return null;
-      });
-
-      return contracts.filter(Boolean);
+      return [];
     } catch (error) {
       console.error('批量创建合约实例失败:', error);
       return [];

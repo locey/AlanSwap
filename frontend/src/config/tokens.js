@@ -117,6 +117,42 @@ export const SEPOLIA_TOKENS = [
     chainId: 11155111,
     isNative: false,
   },
+  {
+    symbol: 'USDC',
+    name: 'USD Coin (Sepolia)',
+    address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+    decimals: 6,
+    logoURI: 'https://tokens.1inch.io/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.png',
+    chainId: 11155111,
+    isNative: false,
+  },
+  {
+    symbol: 'DAI',
+    name: 'Dai Stablecoin (Sepolia)',
+    address: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',
+    decimals: 18,
+    logoURI: 'https://tokens.1inch.io/0x6b175474e89094c44da98b954eedeac495271d0f.png',
+    chainId: 11155111,
+    isNative: false,
+  },
+  {
+    symbol: 'LINK',
+    name: 'Chainlink Token (Sepolia)',
+    address: '0x779877A7B0D9E8603169DdbD7836e478b4624789',
+    decimals: 18,
+    logoURI: 'https://tokens.1inch.io/0x514910771af9ca656af840dff83e8264ecf986ca.png',
+    chainId: 11155111,
+    isNative: false,
+  },
+  {
+    symbol: 'UNI',
+    name: 'Uniswap Token (Sepolia)',
+    address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
+    decimals: 18,
+    logoURI: 'https://tokens.1inch.io/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984.png',
+    chainId: 11155111,
+    isNative: false,
+  },
 ];
 
 /**

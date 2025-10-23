@@ -50,7 +50,9 @@ export const useSwap = () => {
       setError(null);
 
       try {
-        const tokenContract = useERC20Contract(tokenAddress, true);
+        // 等待合约实例创建
+        const tokenContractPromise = useERC20Contract(tokenAddress, true);
+        const tokenContract = await tokenContractPromise;
 
         if (!tokenContract) {
           throw new Error('无法创建代币合约实例');
@@ -118,6 +120,9 @@ export const useSwap = () => {
       setError(null);
 
       try {
+        // 等待 router 合约实例
+        const routerContract = await router;
+
         // 转换金额为 Wei
         const amountIn = parseTokenAmount(inputAmount, inputDecimals);
 
@@ -128,7 +133,7 @@ export const useSwap = () => {
         const deadline = getDeadline(deadlineMinutes);
 
         // 执行交换
-        const swapTx = await router.swapExactTokensForTokens(
+        const swapTx = await routerContract.swapExactTokensForTokens(
           amountIn,
           minimumOutput,
           swapPath,
@@ -192,6 +197,9 @@ export const useSwap = () => {
       setError(null);
 
       try {
+        // 等待 router 合约实例
+        const routerContract = await router;
+
         // ETH 金额已经是 Wei 格式
         const amountIn = parseTokenAmount(inputAmount, 18);
 
@@ -202,7 +210,7 @@ export const useSwap = () => {
         const deadline = getDeadline(deadlineMinutes);
 
         // 执行交换（发送 ETH）
-        const swapTx = await router.swapExactETHForTokens(
+        const swapTx = await routerContract.swapExactETHForTokens(
           minimumOutput,
           swapPath,
           account,
@@ -269,6 +277,9 @@ export const useSwap = () => {
       setError(null);
 
       try {
+        // 等待 router 合约实例
+        const routerContract = await router;
+
         // 转换金额为 Wei
         const amountIn = parseTokenAmount(inputAmount, inputDecimals);
 
@@ -279,7 +290,7 @@ export const useSwap = () => {
         const deadline = getDeadline(deadlineMinutes);
 
         // 执行交换
-        const swapTx = await router.swapExactTokensForETH(
+        const swapTx = await routerContract.swapExactTokensForETH(
           amountIn,
           minimumOutput,
           swapPath,

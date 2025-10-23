@@ -6,21 +6,42 @@ import './index.css'
 import {
   RainbowKitProvider,
   darkTheme,
+  getDefaultConfig,
 } from '@rainbow-me/rainbowkit'
+import '@rainbow-me/rainbowkit/styles.css'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { WagmiProvider, http, createConfig } from "wagmi";
-import { mainnet, polygon, arbitrum, localhost } from "wagmi/chains";
+import { WagmiProvider } from "wagmi";
+import {
+  mainnet,
+  polygon,
+  arbitrum,
+  localhost,
+  sepolia,
+  goerli,
+  bsc,
+  bscTestnet,
+  avalanche,
+  avalancheFuji
+} from "wagmi/chains";
 
-const config = createConfig({
-  chains: [mainnet, polygon, arbitrum, localhost],
-  transports: {
-    [mainnet.id]: http(),
-    [polygon.id]: http(),
-    [arbitrum.id]: http(),
-    [localhost.id]: http("http://127.0.0.1:8545"),
-  },
+const config = getDefaultConfig({
+  appName: 'CryptoSwap',
+  projectId: 'YOUR_PROJECT_ID', // 从 WalletConnect Cloud 获取
+  chains: [
+    mainnet,        // 以太坊主网
+    sepolia,        // Sepolia 测试网
+    goerli,         // Goerli 测试网
+    polygon,        // Polygon 主网
+    arbitrum,       // Arbitrum 主网
+    bsc,            // BSC 主网
+    bscTestnet,     // BSC 测试网
+    avalanche,      // Avalanche 主网
+    avalancheFuji,  // Avalanche 测试网
+    localhost,      // 本地网络
+  ],
+  ssr: false,
 });
 
 const queryClient = new QueryClient()

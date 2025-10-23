@@ -260,9 +260,13 @@ export const calculateTokenValue = (amount, price, decimals = 18) => {
   }
 };
 
+// 导出别名以保持向后兼容
+export const useTokenPrice = useTokenPairPrice;
+
 export default {
   useTokenPairPrice,
   useTokenUSDPrice,
   useMultipleTokenPrices,
   calculateTokenValue,
+  useTokenPrice,
 };
