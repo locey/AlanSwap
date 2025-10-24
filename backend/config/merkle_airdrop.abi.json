@@ -21,6 +21,16 @@
   },
   {
     "type": "event",
+    "name": "MerkleRootUpdated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "airdropId", "type": "uint256", "indexed": true },
+      { "name": "newRoot", "type": "bytes32", "indexed": false },
+      { "name": "newVersion", "type": "uint32", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
     "name": "RewardClaimed",
     "anonymous": false,
     "inputs": [
@@ -53,6 +63,65 @@
     "inputs": [
       { "name": "oldPool", "type": "address", "indexed": true },
       { "name": "newPool", "type": "address", "indexed": true }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "updateMerkleRoot",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "airdropId", "type": "uint256" },
+      { "name": "newRoot", "type": "bytes32" },
+      { "name": "newVersion", "type": "uint32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "activateAirdrop",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "airdropId", "type": "uint256" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "claimReward",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "airdropId", "type": "uint256" },
+      { "name": "amount", "type": "uint256" },
+      { "name": "totalReward", "type": "uint256" },
+      { "name": "proof", "type": "bytes32[]" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "isClaimed",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "airdropId", "type": "uint256" },
+      { "name": "user", "type": "address" }
+    ],
+    "outputs": [
+      { "name": "", "type": "bool" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "getUserRewardStatus",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "airdropId", "type": "uint256" },
+      { "name": "user", "type": "address" }
+    ],
+    "outputs": [
+      { "name": "totalReward", "type": "uint256" },
+      { "name": "claimedReward", "type": "uint256" },
+      { "name": "pendingReward", "type": "uint256" },
+      { "name": "hasRecord", "type": "bool" }
     ]
   }
 ]

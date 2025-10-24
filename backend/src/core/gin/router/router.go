@@ -95,6 +95,8 @@ func ApiBind(r *gin.Engine, ctx *ctx.Context) {
 	v.POST("/userTask/list", airDropApi.UserTaskList)
 	//用户领取空投（获取prof）
 	v.POST("/airdrop/claimReward", airDropApi.ClaimReward)
+	// 管理员更新默克尔根（需要运维调用，后续可加鉴权）
+	v.POST("/airdrop/admin/updateMerkleRoot", airDropApi.AdminUpdateMerkleRoot)
 
 	// 质押相关接口（需要验证）
 	stakeApi := api.NewStakeApi()

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -300,5 +301,40 @@ func (a AirDropApi) ClaimReward(c *gin.Context) {
 	result.OK(c, map[string]interface{}{
 		"airDropId": airdropId,
 		"prof":      proof,
+	})
+}
+
+// AdminUpdateMerkleRootRequest 请求体
+type AdminUpdateMerkleRootRequest struct {
+	AirdropId  string `json:"airdropId"`
+	NewRoot    string `json:"newRoot"` // 0x 前缀的 bytes32
+	NewVersion uint32 `json:"newVersion"`
+}
+
+// POST /api/v1/airdrop/admin/updateMerkleRoot
+func (a AirDropApi) AdminUpdateMerkleRoot(c *gin.Context) {
+	var req AdminUpdateMerkleRootRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.Error(c, result.InvalidParameter)
+		return
+	}
+	if req.AirdropId == "" || len(req.NewRoot) != 66 || !strings.HasPrefix(strings.ToLower(req.NewRoot), "0x") {
+		result.Error(c, result.InvalidParameter)
+		return
+	}
+	// 解析参数
+	aid := new(big.Int)
+	aid.SetString(req.AirdropId, 10)
+	var root ethcommon.Hash
+	root = ethcommon.HexToHash(req.NewRoot)
+
+	svc := service.NewAirdropAdminService()
+	txHash, err := svc.UpdateMerkleRoot(aid, root, req.NewVersion)
+	if err != nil {
+		result.Error(c, result.DBQueryFailed)
+		return
+	}
+	result.OK(c, map[string]interface{}{
+		"txHash": txHash,
 	})
 }

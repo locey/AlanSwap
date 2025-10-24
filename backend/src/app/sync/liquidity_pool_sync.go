@@ -3,6 +3,7 @@ package sync
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -301,9 +302,36 @@ func saveLiquidityPoolEvents(events []*model.LiquidityPoolEvent, chainId int, ta
 			return err
 		}
 
+		// 根据事件标记对应的任务为已完成（自动验证类）
+		for _, e := range events {
+			switch e.EventType {
+			case "Swap":
+				if err := markTaskCompleted(tx, e.UserAddress, "Swap Once"); err != nil {
+					log.Logger.Warn("标记任务完成失败", zap.Error(err), zap.String("task", "Swap Once"), zap.String("user", e.UserAddress))
+				}
+			case "AddLiquidity":
+				if err := markTaskCompleted(tx, e.UserAddress, "Provide Liquidity"); err != nil {
+					log.Logger.Warn("标记任务完成失败", zap.Error(err), zap.String("task", "Provide Liquidity"), zap.String("user", e.UserAddress))
+				}
+			}
+		}
+
 		// 更新区块号
 		return updateLiquidityPoolBlockNumber(chainId, targetBlockNum, addresses)
 	})
+}
+
+// 根据任务名将用户任务状态设为完成（2）。仅作用于 verify_type = 'auto' 的任务。
+func markTaskCompleted(tx *gorm.DB, walletAddress, taskName string) error {
+	addr := strings.ToLower(walletAddress)
+	return tx.Exec(`
+        INSERT INTO user_task_status (wallet_address, task_id, user_status, updated_at)
+        SELECT ?, t.task_id, 2, NOW()
+        FROM tasks t
+        WHERE t.task_name = ? AND t.verify_type = 'auto'
+        ON CONFLICT (wallet_address, task_id)
+        DO UPDATE SET user_status = 2, updated_at = NOW()
+    `, addr, taskName).Error
 }
 
 // calculatePrice 计算代币价格

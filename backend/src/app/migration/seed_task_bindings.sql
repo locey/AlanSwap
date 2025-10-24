@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS airdrop_task_bindings (
 CREATE TABLE IF NOT EXISTS user_task_status (
     id BIGSERIAL PRIMARY KEY,
     wallet_address TEXT NOT NULL CHECK (wallet_address ~ '^0x[0-9a-f]{40}$'),
-    task_id BIGINT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+
     user_status INTEGER NOT NULL CHECK (user_status IN (0,1,2)),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (wallet_address, task_id)
@@ -51,10 +51,15 @@ INSERT INTO tasks (task_name, description, icon_url, action_url, verify_type, de
 SELECT 'Provide Liquidity', 'Add liquidity to any pool', 'https://cdn.example.com/icons/liquidity.png', 'https://app.alanswap.com/liquidity', 'auto', NOW() + INTERVAL '30 days',3000
 WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE task_name = 'Provide Liquidity');
 
+-- 新增: 质押任务
+INSERT INTO tasks (task_name, description, icon_url, action_url, verify_type, deadline, reward_amount)
+SELECT 'Stake Once', 'Make at least one stake', 'https://cdn.example.com/icons/stake.png', 'https://app.alanswap.com/stake', 'auto', NOW() + INTERVAL '30 days',2500
+WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE task_name = 'Stake Once');
+
 -- Bind tasks to airdrop_id = 1
 INSERT INTO airdrop_task_bindings (airdrop_id, task_id)
 SELECT 1 AS airdrop_id, t.task_id FROM tasks t
-WHERE t.task_name IN ('Swap Once','Provide Liquidity')
+WHERE t.task_name IN ('Swap Once','Provide Liquidity','Stake Once')
 ON CONFLICT (airdrop_id, task_id) DO NOTHING;
 
 -- Seed user task status for the given wallet (lowercase)
@@ -62,11 +67,10 @@ INSERT INTO user_task_status (wallet_address, task_id, user_status)
 SELECT '0x020875bf393a9cfc00b75a4f7b07576baa4248f4' AS wallet_address, t.task_id,
        CASE
            WHEN t.task_name IN ('Follow Twitter','Join Telegram') THEN 2  -- completed
-           WHEN t.task_name IN ('Swap Once') THEN 1                        -- in progress
            ELSE 0                                                         -- not started
        END AS user_status
 FROM tasks t
-WHERE t.task_name IN ('Swap Once','Provide Liquidity')
+WHERE t.task_name IN ('Swap Once','Provide Liquidity','Stake Once')
 ON CONFLICT (wallet_address, task_id) DO UPDATE SET user_status = EXCLUDED.user_status;
 
 COMMIT;

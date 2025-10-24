@@ -15,6 +15,7 @@ type Config struct {
 	Pgsql   PgsqlConfig
 	Redis   RedisConfig
 	Chains  []ChainConfig
+	Airdrop AirdropConfig
 }
 type AppConfig struct {
 	Name      string `toml:"name" json:"name"`
@@ -53,6 +54,11 @@ type ChainConfig struct {
 	Name     string `toml:"name" json:"name"`
 	ChainId  int    `toml:"chain_id" json:"chainId"`
 	Endpoint string `toml:"endpoint" json:"endpoint"`
+}
+
+// 新增：空投配置
+type AirdropConfig struct {
+	AdminPrivateKey string `toml:"admin_private_key" json:"adminPrivateKey"`
 }
 
 // InitConfig 初始化配置
