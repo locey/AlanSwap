@@ -37,4 +37,4 @@ pprof_port = 6060
 # DEX合约地址现在存储在chain表中，不再从配置文件读取
 
 [airdrop]
-admin_private_key = a3189fa9381849f460e4ed8b04c0d5c055df81d9b16b6eabe0a597bbf93ef6f9
+admin_private_key = xxxxxxxxxxxxxxxxxxx
