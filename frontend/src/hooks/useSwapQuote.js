@@ -100,10 +100,16 @@ export const useSwapQuote = (
       const minOut = calculateMinimumAmount(amountOut, slippage);
       setMinimumOutput(minOut);
 
-      // 计算执行价格
+      // 计算执行价格（考虑小数位差异）
+      // 公式: 执行价格 = (outputAmount / 10^outputDecimals) / (inputAmount / 10^inputDecimals)
       const inputBN = new BigNumber(amountIn);
       const outputBN = new BigNumber(amountOut);
-      const price = outputBN.div(inputBN).toString();
+
+      // 将两个值都转换为可读格式后再相除
+      const inputReadable = inputBN.div(new BigNumber(10).pow(inputDecimals));
+      const outputReadable = outputBN.div(new BigNumber(10).pow(outputDecimals));
+      const price = outputReadable.div(inputReadable).toString();
+
       setExecutionPrice(price);
 
       // 计算价格影响（需要流动性池储备量）

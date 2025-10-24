@@ -4,7 +4,8 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Plus, Minus, Info } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
+import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 
 // Hooks
@@ -19,7 +20,9 @@ import { useLiquidity } from '../hooks/useLiquidity';
 // Config & Utils
 import { getTokensByChainId, isNativeToken } from '../config/tokens';
 import { formatTokenAmount, getExplorerUrl } from '../utils/web3';
+import { getAddressesByChainId } from '../contracts/addresses';
 import BigNumber from 'bignumber.js';
+import { checkUserLiquidity } from '../utils/checkLiquidity';
 
 // Components
 import AddLiquidityModal from '../components/AddLiquidityModal';
@@ -27,6 +30,7 @@ import RemoveLiquidityModal from '../components/RemoveLiquidityModal';
 
 export default function LiquidityPage() {
   const { address, chain } = useAccount();
+  const publicClient = usePublicClient();
 
   // 获取代币列表
   const tokens = getTokensByChainId(chain?.id || 1);
@@ -71,6 +75,7 @@ export default function LiquidityPage() {
     totalSupply,
     loading: poolLoading,
     error: poolError,
+    refetch: refetchPoolInfo,
   } = usePoolInfo(tokenA.address, tokenB.address, tokenA.decimals, tokenB.decimals);
 
   // 查询用户流动性
@@ -182,9 +187,14 @@ export default function LiquidityPage() {
           setAmountA('');
           setAmountB('');
 
-          // 刷新余额
+          // 刷新余额和流动性信息
           refetchBalanceA();
           refetchBalanceB();
+
+          // 等待区块确认后刷新池子信息
+          setTimeout(() => {
+            refetchPoolInfo();
+          }, 2000);
         },
         onError: (error) => {
           toast.error(error, { id: toastId });
@@ -250,9 +260,14 @@ export default function LiquidityPage() {
           setShowRemoveConfirm(false);
           setRemovePercent(25);
 
-          // 刷新余额
+          // 刷新余额和流动性信息
           refetchBalanceA();
           refetchBalanceB();
+
+          // 等待区块确认后刷新池子信息
+          setTimeout(() => {
+            refetchPoolInfo();
+          }, 2000);
         },
         onError: (error) => {
           toast.error(error, { id: toastId });
@@ -278,12 +293,54 @@ export default function LiquidityPage() {
   const canRemoveLiquidity =
     address && lpBalance && lpBalance !== '0' && removePercent > 0;
 
+  // 调试函数：手动检查流动性
+  const handleDebugLiquidity = async () => {
+    if (!address || !publicClient) {
+      toast.error('请先连接钱包');
+      return;
+    }
+
+    console.log('=== 手动检查流动性 ===');
+
+    const chainId = publicClient.chain.id;
+    const addresses = getAddressesByChainId(chainId);
+    const provider = new ethers.BrowserProvider(publicClient.transport, {
+      chainId: publicClient.chain.id,
+      name: publicClient.chain.name,
+    });
+
+    // 将 ETH 零地址替换为 WETH
+    const actualTokenA = isNativeToken(tokenA.address)
+      ? addresses.WETH
+      : tokenA.address;
+    const actualTokenB = isNativeToken(tokenB.address)
+      ? addresses.WETH
+      : tokenB.address;
+
+    await checkUserLiquidity(
+      provider,
+      addresses.FACTORY,
+      actualTokenA,
+      actualTokenB,
+      address
+    );
+
+    toast.success('检查完成，请查看控制台输出');
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* 标题 */}
       <div className="text-center">
         <h1 className="text-4xl font-bold text-white mb-2">流动性管理</h1>
         <p className="text-slate-400">提供流动性并赚取交易手续费</p>
+        {/* 调试按钮 */}
+        <button
+          onClick={handleDebugLiquidity}
+          className="mt-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition"
+        >
+          🔍 检查我的流动性（调试）
+        </button>
       </div>
 
       {/* 主卡片 */}
@@ -459,32 +516,51 @@ export default function LiquidityPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">预计 LP Token</span>
                   <span className="text-white font-medium">
-                    {formatTokenAmount(lpTokens, 18, 6)}
+                    {isNewPool
+                      ? (() => {
+                          // 新池子计算 LP: sqrt(amountA * amountB) - 1000
+                          try {
+                            const MINIMUM_LIQUIDITY = '1000';
+                            const amountAWei = new BigNumber(amountA).multipliedBy(
+                              new BigNumber(10).pow(tokenA.decimals)
+                            );
+                            const amountBWei = new BigNumber(amountB).multipliedBy(
+                              new BigNumber(10).pow(tokenB.decimals)
+                            );
+                            const liquidity = amountAWei
+                              .multipliedBy(amountBWei)
+                              .sqrt()
+                              .minus(MINIMUM_LIQUIDITY);
+                            return formatTokenAmount(liquidity.toFixed(0), 18, 6);
+                          } catch {
+                            return '0';
+                          }
+                        })()
+                      : formatTokenAmount(lpTokens, 18, 6)}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">池子份额</span>
                   <span className="text-white font-medium">
-                    {parseFloat(addSharePercent || 0).toFixed(4)}%
+                    {isNewPool ? '100' : parseFloat(addSharePercent || 0).toFixed(4)}%
                   </span>
                 </div>
 
-                {!isNewPool && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">价格</span>
-                      <div className="text-right text-white font-medium">
-                        <div>
-                          1 {tokenA.symbol} ={' '}
-                          {(parseFloat(amountB) / parseFloat(amountA)).toFixed(
-                            6
-                          )}{' '}
-                          {tokenB.symbol}
-                        </div>
+                {/* 显示价格信息（包括新池子） */}
+                {parseFloat(amountA) > 0 && parseFloat(amountB) > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">
+                      {isNewPool ? '初始价格' : '价格'}
+                    </span>
+                    <div className="text-right text-white font-medium">
+                      <div>
+                        1 {tokenA.symbol} ={' '}
+                        {(parseFloat(amountB) / parseFloat(amountA)).toFixed(6)}{' '}
+                        {tokenB.symbol}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}

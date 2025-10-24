@@ -11,10 +11,30 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
+import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
-import { usePairContract, useERC20Contract } from './useContract';
+import { useERC20Contract } from './useContract';
 import { useTokenPrice } from './useTokenPrice';
 import { formatTokenAmount } from '../utils/web3';
+
+// 导入 ABI
+import PairABI from '../contracts/abis/Pair.json';
+import FactoryABI from '../contracts/abis/Factory.json';
+import { getAddressesByChainId } from '../contracts/addresses';
+
+/**
+ * 将 Viem PublicClient 转换为 ethers Provider
+ */
+function publicClientToProvider(publicClient) {
+  const { chain, transport } = publicClient;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  const provider = new ethers.BrowserProvider(transport, network);
+  return provider;
+}
 
 /**
  * 查询流动性池基础信息
@@ -26,7 +46,6 @@ import { formatTokenAmount } from '../utils/web3';
 export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const pairContract = usePairContract(tokenA, tokenB);
 
   const [poolInfo, setPoolInfo] = useState({
     pairAddress: null,
@@ -40,7 +59,7 @@ export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
   });
 
   const fetchPoolInfo = useCallback(async () => {
-    if (!pairContract || !tokenA || !tokenB || !publicClient) {
+    if (!tokenA || !tokenB || !publicClient) {
       setPoolInfo((prev) => ({ ...prev, loading: false }));
       return;
     }
@@ -48,10 +67,52 @@ export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
     try {
       setPoolInfo((prev) => ({ ...prev, loading: true, error: null }));
 
-      // 获取 Pair 地址
-      const pairAddress = await pairContract.getAddress();
+      // 1. 获取 Factory 合约并查询 Pair 地址
+      const chainId = publicClient.chain.id;
+      const addresses = getAddressesByChainId(chainId);
+      const provider = publicClientToProvider(publicClient);
 
-      // 并行查询：储备量、token0、token1、总供应量
+      // 将 ETH 零地址替换为 WETH 地址
+      const actualTokenA = tokenA === '0x0000000000000000000000000000000000000000'
+        ? addresses.WETH
+        : tokenA;
+      const actualTokenB = tokenB === '0x0000000000000000000000000000000000000000'
+        ? addresses.WETH
+        : tokenB;
+
+      console.log('Querying pair for:', { actualTokenA, actualTokenB });
+
+      const factoryContract = new ethers.Contract(
+        addresses.FACTORY,
+        FactoryABI,
+        provider
+      );
+
+      const pairAddress = await factoryContract.getPair(actualTokenA, actualTokenB);
+
+      console.log('Pair address fetched:', pairAddress);
+
+      // 检查 Pair 是否存在
+      if (pairAddress === '0x0000000000000000000000000000000000000000') {
+        console.log('Pair does not exist (zero address)');
+        setPoolInfo({
+          pairAddress: null,
+          reserve0: '0',
+          reserve1: '0',
+          token0: null,
+          token1: null,
+          totalSupply: '0',
+          loading: false,
+          error: null,
+          isToken0: actualTokenA.toLowerCase() < actualTokenB.toLowerCase(),
+        });
+        return;
+      }
+
+      // 2. 创建 Pair 合约实例
+      const pairContract = new ethers.Contract(pairAddress, PairABI, provider);
+
+      // 3. 并行查询：储备量、token0、token1、总供应量
       const [reserves, token0Address, token1Address, totalSupply] =
         await Promise.all([
           pairContract.getReserves(),
@@ -60,9 +121,9 @@ export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
           pairContract.totalSupply(),
         ]);
 
-      // 确定代币顺序（Uniswap V2 按地址排序）
-      const isToken0 =
-        tokenA.toLowerCase() < tokenB.toLowerCase();
+      // 4. 确定代币顺序（Uniswap V2 按地址排序）
+      // 使用实际的代币地址（WETH 替换 ETH）
+      const isToken0 = actualTokenA.toLowerCase() < actualTokenB.toLowerCase();
 
       setPoolInfo({
         pairAddress,
@@ -73,7 +134,7 @@ export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
         totalSupply: totalSupply.toString(),
         loading: false,
         error: null,
-        isToken0, // tokenA 是否为 token0
+        isToken0,
       });
     } catch (error) {
       console.error('Failed to fetch pool info:', error);
@@ -83,7 +144,7 @@ export function usePoolInfo(tokenA, tokenB, decimalsA = 18, decimalsB = 18) {
         error: error.message || '获取池子信息失败',
       }));
     }
-  }, [pairContract, tokenA, tokenB, publicClient]);
+  }, [tokenA, tokenB, publicClient]);
 
   useEffect(() => {
     fetchPoolInfo();
@@ -124,7 +185,15 @@ export function useUserLiquidity(
   const lpTokenContract = useERC20Contract(pairAddress);
 
   useEffect(() => {
+    console.log('useUserLiquidity effect triggered:', {
+      lpTokenContract: !!lpTokenContract,
+      address,
+      pairAddress,
+      poolLoading,
+    });
+
     if (!lpTokenContract || !address || !pairAddress || poolLoading) {
+      console.log('useUserLiquidity: skipping fetch due to missing dependencies');
       return;
     }
 
@@ -132,9 +201,13 @@ export function useUserLiquidity(
       try {
         setUserLiquidity((prev) => ({ ...prev, loading: true }));
 
+        console.log('Fetching LP balance for:', { address, pairAddress });
+
         // 查询用户的 LP Token 余额
         const balance = await lpTokenContract.balanceOf(address);
         const lpBalance = balance.toString();
+
+        console.log('LP Balance:', lpBalance);
 
         // 计算份额占比
         let sharePercent = '0';
@@ -352,23 +425,32 @@ export function useCalculateAddLiquidity(
       );
 
       // 如果是新池子（储备量为0）
+      // 对于新池子，用户需要自己输入 amountB，我们不强制计算
+      // 只有当用户同时输入了 amountA 和 amountB 时才计算 LP Token
       if (reserveABN.isZero() || reserveBBN.isZero()) {
+        // 新池子不自动计算 amountB，让用户自己设定初始价格比例
+        // LP Token 计算需要等待用户输入 amountB（在流动性页面处理）
         setCalculation({
-          amountB: '0',
+          amountB: '0', // 对于新池子，返回 0 让上层组件知道需要用户输入
           sharePercent: '100',
-          lpTokens: amountAWei.sqrt().toFixed(0), // 初始 LP = sqrt(amountA * amountB)
+          lpTokens: '0', // 暂时设为 0，实际计算在确认时进行
           loading: false,
         });
         return;
       }
 
       // 计算需要的 amountB = reserveB * amountA / reserveA
-      const amountBWei = reserveBBN
+      // 向上取整并增加 1% 的缓冲，确保满足合约要求
+      // 这个缓冲考虑了 toFixed 和 parseTokenAmount 之间的精度损失
+      const amountBWeiExact = reserveBBN
         .multipliedBy(amountAWei)
-        .div(reserveABN)
-        .toFixed(0);
+        .div(reserveABN);
 
-      const amountB = new BigNumber(amountBWei)
+      const amountBWei = amountBWeiExact
+        .multipliedBy(1.01) // 增加 1% 缓冲
+        .decimalPlaces(0, BigNumber.ROUND_UP);
+
+      const amountB = amountBWei
         .div(new BigNumber(10).pow(decimalsB))
         .toFixed(6);
 

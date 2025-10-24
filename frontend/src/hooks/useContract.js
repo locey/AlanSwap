@@ -3,7 +3,7 @@
  * 提供方便的方式来获取合约实例
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useWalletClient, usePublicClient } from 'wagmi';
 
@@ -54,29 +54,38 @@ function publicClientToProvider(publicClient) {
 export const useContract = (address, abi, withSigner = false) => {
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const [contract, setContract] = useState(null);
 
-  return useMemo(() => {
-    if (!address || !abi) return null;
-
-    try {
-      if (withSigner && walletClient) {
-        // 对于需要签名的操作，返回一个 Promise
-        return walletClientToSigner(walletClient).then(signer =>
-          new ethers.Contract(address, abi, signer)
-        );
-      }
-
-      if (publicClient) {
-        const provider = publicClientToProvider(publicClient);
-        return new ethers.Contract(address, abi, provider);
-      }
-
-      return null;
-    } catch (error) {
-      console.error('创建合约实例失败:', error);
-      return null;
+  useEffect(() => {
+    if (!address || !abi) {
+      setContract(null);
+      return;
     }
+
+    const initContract = async () => {
+      try {
+        if (withSigner && walletClient) {
+          // 对于需要签名的操作，需要 await signer
+          const signer = await walletClientToSigner(walletClient);
+          const contractInstance = new ethers.Contract(address, abi, signer);
+          setContract(contractInstance);
+        } else if (publicClient) {
+          const provider = publicClientToProvider(publicClient);
+          const contractInstance = new ethers.Contract(address, abi, provider);
+          setContract(contractInstance);
+        } else {
+          setContract(null);
+        }
+      } catch (error) {
+        console.error('创建合约实例失败:', error);
+        setContract(null);
+      }
+    };
+
+    initContract();
   }, [address, abi, withSigner, walletClient, publicClient]);
+
+  return contract;
 };
 
 /**

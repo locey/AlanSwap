@@ -3,7 +3,8 @@
  */
 
 import { X, AlertCircle, Plus } from 'lucide-react';
-import { formatTokenAmount } from '../utils/web3';
+import { formatTokenAmount, parseTokenAmount } from '../utils/web3';
+import BigNumber from 'bignumber.js';
 
 export default function AddLiquidityModal({
   isOpen,
@@ -20,6 +21,35 @@ export default function AddLiquidityModal({
   isNewPool = false,
 }) {
   if (!isOpen) return null;
+
+  // 对于新池子，计算预期的 LP Token
+  // Uniswap V2 公式: liquidity = sqrt(amountA * amountB) - MINIMUM_LIQUIDITY
+  const calculateNewPoolLP = () => {
+    if (!isNewPool || !amountA || !amountB) return lpTokens;
+
+    try {
+      const MINIMUM_LIQUIDITY = '1000'; // Uniswap V2 固定值
+
+      const amountAWei = parseTokenAmount(amountA, tokenA.decimals);
+      const amountBWei = parseTokenAmount(amountB, tokenB.decimals);
+
+      const amountABN = new BigNumber(amountAWei);
+      const amountBBN = new BigNumber(amountBWei);
+
+      // liquidity = sqrt(amountA * amountB)
+      const liquidity = amountABN.multipliedBy(amountBBN).sqrt();
+
+      // 减去 MINIMUM_LIQUIDITY（首次添加时会永久锁定）
+      const lpAmount = liquidity.minus(MINIMUM_LIQUIDITY).toFixed(0);
+
+      return lpAmount;
+    } catch (error) {
+      console.error('计算新池子 LP Token 失败:', error);
+      return lpTokens;
+    }
+  };
+
+  const displayLP = isNewPool ? calculateNewPoolLP() : lpTokens;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -125,7 +155,7 @@ export default function AddLiquidityModal({
             <div className="flex items-center justify-between">
               <span className="text-slate-400">将获得 LP Token</span>
               <span className="text-white font-medium">
-                {formatTokenAmount(lpTokens || '0', 18, 6)}
+                {formatTokenAmount(displayLP || '0', 18, 6)}
               </span>
             </div>
 

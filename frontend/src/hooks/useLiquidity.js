@@ -11,10 +11,65 @@
 
 import { useState, useCallback } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
-import { useRouterContract, useERC20Contract, usePairContract } from './useContract';
+import { useRouterContract } from './useContract';
 import { parseTokenAmount, getDeadline, parseError } from '../utils/web3';
 import { isNativeToken } from '../config/tokens';
+
+// 导入合约 ABI
+import ERC20ABI from '../contracts/abis/ERC20.json';
+import PairABI from '../contracts/abis/Pair.json';
+import FactoryABI from '../contracts/abis/Factory.json';
+import { getAddressesByChainId } from '../contracts/addresses';
+
+/**
+ * 将 Viem WalletClient 转换为 ethers Signer
+ */
+async function walletClientToSigner(walletClient) {
+  const { account, chain, transport } = walletClient;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  const provider = new ethers.BrowserProvider(transport, network);
+  const signer = await provider.getSigner(account.address);
+  return signer;
+}
+
+/**
+ * 将 Viem PublicClient 转换为 ethers Provider
+ */
+function publicClientToProvider(publicClient) {
+  const { chain, transport } = publicClient;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  const provider = new ethers.BrowserProvider(transport, network);
+  return provider;
+}
+
+/**
+ * 创建 ERC20 合约实例（不使用 Hook）
+ */
+async function createERC20Contract(tokenAddress, walletClient) {
+  const signer = await walletClientToSigner(walletClient);
+  return new ethers.Contract(tokenAddress, ERC20ABI, signer);
+}
+
+/**
+ * 获取 Pair 地址
+ */
+async function getPairAddress(tokenA, tokenB, publicClient) {
+  const chainId = publicClient.chain.id;
+  const addresses = getAddressesByChainId(chainId);
+  const provider = publicClientToProvider(publicClient);
+  const factoryContract = new ethers.Contract(addresses.FACTORY, FactoryABI, provider);
+  return await factoryContract.getPair(tokenA, tokenB);
+}
 
 export function useLiquidity() {
   const { address, chain } = useAccount();
@@ -43,7 +98,8 @@ export function useLiquidity() {
         setApproving(true);
         setError(null);
 
-        const tokenContract = useERC20Contract(tokenAddress, true);
+        // 创建 ERC20 合约实例（不使用 Hook）
+        const tokenContract = await createERC20Contract(tokenAddress, walletClient);
 
         // 检查当前授权额度
         const routerAddress = await routerContract.getAddress();
@@ -127,17 +183,18 @@ export function useLiquidity() {
         const amountAWei = parseTokenAmount(amountA, decimalsA);
         const amountBWei = parseTokenAmount(amountB, decimalsB);
 
+        // 使用标准滑点（amountB 已经在计算时增加了缓冲）
         const slippageFactor = new BigNumber(1).minus(
           new BigNumber(slippage).div(100)
         );
 
         const amountAMin = new BigNumber(amountAWei)
           .multipliedBy(slippageFactor)
-          .toFixed(0);
+          .decimalPlaces(0, BigNumber.ROUND_DOWN);
 
         const amountBMin = new BigNumber(amountBWei)
           .multipliedBy(slippageFactor)
-          .toFixed(0);
+          .decimalPlaces(0, BigNumber.ROUND_DOWN);
 
         const deadline = getDeadline();
 
@@ -215,43 +272,79 @@ export function useLiquidity() {
         setError(null);
         setTxHash(null);
 
-        // 1. 授权 Token
-        console.log('Approving Token...');
-        await approveToken(token, amountToken, decimalsToken);
+        // 1. 获取当前池子储备量，重新计算精确的 amountToken
+        const chainId = publicClient.chain.id;
+        const addresses = getAddressesByChainId(chainId);
+        const wethAddress = addresses.WETH;
+        const pairAddress = await getPairAddress(token, wethAddress, publicClient);
 
-        // 2. 计算最小数量（考虑滑点）
-        const amountTokenWei = parseTokenAmount(amountToken, decimalsToken);
+        // 获取储备量
+        const provider = publicClientToProvider(publicClient);
+        const pairContract = new ethers.Contract(pairAddress, PairABI, provider);
+        const [reserve0Raw, reserve1Raw] = await pairContract.getReserves();
+        const token0 = await pairContract.token0();
+
+        // 确定哪个是 token，哪个是 WETH
+        const isToken0 = token.toLowerCase() < wethAddress.toLowerCase();
+        const reserveToken = isToken0 ? reserve0Raw.toString() : reserve1Raw.toString();
+        const reserveWETH = isToken0 ? reserve1Raw.toString() : reserve0Raw.toString();
+
+        // 3. 重新计算精确的 amountToken
         const amountETHWei = parseTokenAmount(amountETH, 18);
+        const reserveTokenBN = new BigNumber(reserveToken);
+        const reserveWETHBN = new BigNumber(reserveWETH);
+        const amountETHBN = new BigNumber(amountETHWei);
 
-        const slippageFactor = new BigNumber(1).minus(
-          new BigNumber(slippage).div(100)
+        // amountTokenOptimal = amountETH * reserveToken / reserveWETH (精确计算，向上取整)
+        const amountTokenOptimalWei = amountETHBN
+          .multipliedBy(reserveTokenBN)
+          .div(reserveWETHBN)
+          .decimalPlaces(0, BigNumber.ROUND_UP);
+
+        // 2. 授权 Token（使用重新计算的数量 * 1.02 以确保足够）
+        console.log('Approving Token...');
+        const amountTokenForApproval = amountTokenOptimalWei
+          .multipliedBy(1.02)
+          .decimalPlaces(0, BigNumber.ROUND_UP);
+        const amountTokenOptimalReadable = amountTokenForApproval
+          .div(new BigNumber(10).pow(decimalsToken))
+          .toFixed(decimalsToken);
+        await approveToken(token, amountTokenOptimalReadable, decimalsToken);
+
+        // 4. 计算最小数量（使用更宽松的容差）
+        // 由于精度问题，我们需要更大的容差来避免交易失败
+        const minSlippageFactor = new BigNumber(1).minus(
+          new BigNumber(slippage).plus(0.5).div(100) // 额外 0.5% 容差
         );
 
-        const amountTokenMin = new BigNumber(amountTokenWei)
-          .multipliedBy(slippageFactor)
-          .toFixed(0);
+        const amountTokenMin = amountTokenOptimalWei
+          .multipliedBy(minSlippageFactor)
+          .decimalPlaces(0, BigNumber.ROUND_DOWN);
 
         const amountETHMin = new BigNumber(amountETHWei)
-          .multipliedBy(slippageFactor)
-          .toFixed(0);
+          .multipliedBy(minSlippageFactor)
+          .decimalPlaces(0, BigNumber.ROUND_DOWN);
 
         const deadline = getDeadline();
 
-        console.log('Adding liquidity ETH:', {
+        console.log('Adding liquidity ETH (recalculated):', {
           token,
-          amountToken: amountTokenWei,
+          amountTokenOriginal: parseTokenAmount(amountToken, decimalsToken),
+          amountTokenOptimal: amountTokenOptimalWei.toFixed(0),
           amountETH: amountETHWei,
-          amountTokenMin,
-          amountETHMin,
+          amountTokenMin: amountTokenMin.toFixed(0),
+          amountETHMin: amountETHMin.toFixed(0),
           deadline,
+          reserveToken,
+          reserveWETH,
         });
 
-        // 3. 添加流动性（ETH + Token）
+        // 5. 添加流动性（ETH + Token）- 使用重新计算的精确值
         const tx = await routerContract.addLiquidityETH(
           token,
-          BigInt(amountTokenWei),
-          BigInt(amountTokenMin),
-          BigInt(amountETHMin),
+          BigInt(amountTokenOptimalWei.toFixed(0)),
+          BigInt(amountTokenMin.toFixed(0)),
+          BigInt(amountETHMin.toFixed(0)),
           address,
           BigInt(deadline),
           { value: BigInt(amountETHWei) } // 发送 ETH
@@ -313,8 +406,7 @@ export function useLiquidity() {
         setTxHash(null);
 
         // 1. 获取 Pair 地址
-        const pairContract = usePairContract(tokenA, tokenB);
-        const pairAddress = await pairContract.getAddress();
+        const pairAddress = await getPairAddress(tokenA, tokenB, publicClient);
 
         // 2. 授权 LP Token
         console.log('Approving LP Token...');
@@ -411,9 +503,10 @@ export function useLiquidity() {
         setTxHash(null);
 
         // 1. 获取 Pair 地址（token + WETH）
-        const wethAddress = process.env.VITE_WETH_ADDRESS;
-        const pairContract = usePairContract(token, wethAddress);
-        const pairAddress = await pairContract.getAddress();
+        const chainId = publicClient.chain.id;
+        const addresses = getAddressesByChainId(chainId);
+        const wethAddress = addresses.WETH;
+        const pairAddress = await getPairAddress(token, wethAddress, publicClient);
 
         // 2. 授权 LP Token
         console.log('Approving LP Token...');
