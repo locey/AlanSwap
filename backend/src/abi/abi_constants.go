@@ -9,7 +9,6 @@ const (
 	ABIUniswapV2Factory = "UniswapV2Factory"
 	ABIMerkleAirdrop    = "MerkleAirdrop"
 	STAKEV2             = "StakeV2"
-	ABIERC20Test        = "ERC20Test"
 )
 
 // 便捷函数 - 获取UniswapV2Pair ABI
@@ -23,9 +22,6 @@ func GetERC20ABI() abi.ABI {
 }
 func GetStakeV2ABI() abi.ABI {
 	return GetABIManager().MustGetABI(STAKEV2)
-}
-func GetERC20TestABI() abi.ABI {
-	return GetABIManager().MustGetABI(ABIERC20Test)
 }
 
 // 便捷函数 - 获取UniswapV2Factory ABI

@@ -92,7 +92,6 @@ func (am *ABIManager) PreloadCommonABIs() error {
 		"UniswapV2Factory": "config/uniswap_v2_factory.abi.json",
 		"MerkleAirdrop":    "config/merkle_airdrop.abi.json",
 		"StakeV2":          "config/StakeV2.abi.json",
-		"ERC20Test":        "config/ERC20Test.abi.json",
 	}
 
 	for name, path := range commonABIs {
