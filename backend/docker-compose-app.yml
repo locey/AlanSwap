@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  api-service:
+    image: alanswap-api:latest  # 使用统一镜像
+    container_name: api-service
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./config:/app/config
+    environment:
+      DB_HOST: 172.18.0.2  # 使用固定的PostgreSQL IP
+      DB_PORT: 5432
+      DB_USER: alanuser
+      DB_PASSWORD: alanpasswd
+      DB_NAME: alanswap
+      REDIS_HOST: 172.18.0.3  # 使用固定的Redis IP
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redispasswd
+      SERVICE_TYPE: api  # 指定服务类型为API
+    networks:
+      alanswap-network:
+        ipv4_address: 172.18.0.4  # API服务的固定IP
+    restart: unless-stopped
+
+  indexer-service:
+    image: alanswap-indexer:latest  # 使用相同的统一镜像
+    container_name: indexer-service
+    volumes:
+      - ./config:/app/config
+    environment:
+      DB_HOST: 172.18.0.2  # 使用固定的PostgreSQL IP
+      DB_PORT: 5432
+      DB_USER: alanuser
+      DB_PASSWORD: alanpasswd
+      DB_NAME: alanswap
+      REDIS_HOST: 172.18.0.3  # 使用固定的Redis IP
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redispasswd
+      SERVICE_TYPE: indexer  # 指定服务类型为Indexer
+    networks:
+      alanswap-network:
+        ipv4_address: 172.18.0.5  # Indexer服务的固定IP
+    restart: unless-stopped
+
+networks:
+  alanswap-network:
+    external: true  # 使用外部网络，与基础设施共享

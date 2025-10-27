@@ -2,6 +2,7 @@ package abi
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 
@@ -84,17 +85,47 @@ func (am *ABIManager) MustGetABI(abiName string) abi.ABI {
 	return abiInstance
 }
 
-// PreloadCommonABIs 预加载常用ABI
-func (am *ABIManager) PreloadCommonABIs() error {
-	commonABIs := map[string]string{
-		"UniswapV2Pair":    "config/uniswap_v2_pair.abi.json",
-		"ERC20":            "config/erc20.abi.json",
-		"UniswapV2Factory": "config/uniswap_v2_factory.abi.json",
-		"MerkleAirdrop":    "config/merkle_airdrop.abi.json",
-		"StakeV2":          "config/StakeV2.abi.json",
+// isRunningInContainer 检测是否在容器中运行
+func isRunningInContainer() bool {
+	// 检查是否存在.dockerenv文件
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
 	}
 
-	for name, path := range commonABIs {
+	// 检查cgroup信息中是否包含docker
+	if data, err := ioutil.ReadFile("/proc/1/cgroup"); err == nil {
+		if strings.Contains(string(data), "docker") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getABIPath 根据运行环境获取ABI文件路径
+func getABIPath(basePath string) string {
+	if isRunningInContainer() {
+		// 在容器中运行，使用/app/config路径
+		return "/app/config/" + basePath
+	}
+	// 在本地运行，使用相对路径
+	return "config/" + basePath
+}
+
+// PreloadCommonABIs 预加载常用ABI
+func (am *ABIManager) PreloadCommonABIs() error {
+	// 定义基础路径（不包含前缀）
+	commonABIs := map[string]string{
+		"UniswapV2Pair":    "uniswap_v2_pair.abi.json",
+		"ERC20":            "erc20.abi.json",
+		"UniswapV2Factory": "uniswap_v2_factory.abi.json",
+		"MerkleAirdrop":    "merkle_airdrop.abi.json",
+		"StakeV2":          "StakeV2.abi.json",
+	}
+
+	for name, basePath := range commonABIs {
+		// 根据环境获取完整路径
+		path := getABIPath(basePath)
 		if err := am.LoadABI(name, path); err != nil {
 			log.Logger.Warn("预加载ABI失败",
 				zap.String("name", name),

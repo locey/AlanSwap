@@ -352,63 +352,296 @@ func (s *StakeService) GetStakeRecords(userAddress string, chainId int64, pagina
 	return stakeRecords, total, nil
 }
 
-// GetStakeOverview 获取质押概览
+// GetStakeOverview 获取质押概览（优化版，一次性计算所有数据）
 func (s *StakeService) GetStakeOverview(userAddress string, chainId int64) (*model.StakeOverview, error) {
-	var totalStaked int64
-	var activeStakes int64
+	now := time.Now()
 
-	// 构建查询条件
-	query := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).Where("address = ? AND event_type = ?", userAddress, "Staked")
-	if chainId > 0 {
-		query = query.Where("chain_id = ?", chainId)
+	// 1. 获取用户基本信息
+	var user model.Users
+	userErr := ctx.Ctx.DB.Where("chain_id = ? AND address = ?", chainId, userAddress).First(&user).Error
+	if userErr != nil && userErr != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("查询用户信息失败: %v", userErr)
 	}
 
-	// 计算总质押量（活跃状态的质押）
-	//var totalStakedStr string
-	if err := query.Select("COALESCE(SUM(amount), 0)").Scan(&totalStaked).Error; err != nil {
-		return nil, fmt.Errorf("计算总质押量失败: %v", err)
-	}
-	// 将字符串结果转换为int64
-	//totalStaked, err := strconv.ParseInt(totalStakedStr, 10, 64)
-	//if err != nil {
-	//	return nil, fmt.Errorf("转换总质押量失败: %v", err)
-	//}
-	// 计算活跃质押数量（未提取的质押记录）
-	activeQuery := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).Where("address = ? AND event_type = ?", userAddress, "Staked")
-	if chainId > 0 {
-		activeQuery = activeQuery.Where("chain_id = ?", chainId)
-	}
-
-	// 统计未提取的质押记录数量
+	// 2. 获取用户所有质押记录（一次性查询）
 	var stakeRecords []model.UserOperationRecord
-	if err := activeQuery.Find(&stakeRecords).Error; err != nil {
-		return nil, fmt.Errorf("查询质押记录失败: %v", err)
+	stakeQuery := ctx.Ctx.DB.Where("address = ? AND chain_id = ? AND event_type = ?",
+		userAddress, chainId, "Staked").Find(&stakeRecords)
+	if stakeQuery.Error != nil {
+		return nil, fmt.Errorf("查询质押记录失败: %v", stakeQuery.Error)
 	}
+
+	// 3. 计算基础数据
+	var totalStaked int64
+	var activeStakes int
+	var totalDuration time.Duration
 
 	for _, record := range stakeRecords {
+		totalStaked += record.Amount
+
+		// 检查是否已提取
 		var withdrawRecord model.UserOperationRecord
-		if err := ctx.Ctx.DB.Where("address = ? AND chain_id = ? AND event_type = ? AND amount = ?",
-			userAddress, record.ChainId, "withdraw", record.Amount).First(&withdrawRecord).Error; err != nil {
-			// 如果没有找到对应的提取记录，说明是活跃质押
+		withdrawErr := ctx.Ctx.DB.Where("address = ? AND chain_id = ? AND event_type = ? AND amount = ?",
+			userAddress, record.ChainId, "withdraw", record.Amount).First(&withdrawRecord).Error
+
+		if withdrawErr != nil {
+			// 未提取，是活跃质押
 			activeStakes++
+			duration := now.Sub(record.OperationTime)
+			totalDuration += duration
+		} else {
+			// 已提取，计算历史质押时间
+			duration := withdrawRecord.OperationTime.Sub(record.OperationTime)
+			totalDuration += duration
 		}
 	}
 
-	// 计算总收益（从Users表获取积分信息）
-	totalRewards, err := s.getUserRewards(userAddress, chainId)
-	if err != nil {
-		return nil, fmt.Errorf("获取用户收益失败: %v", err)
+	// 4. 计算总收益
+	totalRewards := 0.0
+	if userErr == nil {
+		rewardRate := decimal.NewFromFloat(0.01) // 1积分 = 0.01代币
+		totalRewardsDecimal := user.Jf.Mul(rewardRate)
+		totalRewards, _ = totalRewardsDecimal.Float64()
 	}
 
+	// 5. 计算当月质押占比
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	endOfMonth := startOfMonth.AddDate(0, 1, -1).Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	var userMonthlyStake int64
+	monthlyUserQuery := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).
+		Where("address = ? AND chain_id = ? AND event_type = ? AND operation_time BETWEEN ? AND ?",
+			userAddress, chainId, "Staked", startOfMonth, endOfMonth)
+	if err := monthlyUserQuery.Select("COALESCE(SUM(amount), 0)").Scan(&userMonthlyStake).Error; err != nil {
+		return nil, fmt.Errorf("查询用户当月质押总额失败: %v", err)
+	}
+
+	var totalMonthlyStake int64
+	monthlyTotalQuery := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).
+		Where("chain_id = ? AND event_type = ? AND operation_time BETWEEN ? AND ?",
+			chainId, "Staked", startOfMonth, endOfMonth)
+	if err := monthlyTotalQuery.Select("COALESCE(SUM(amount), 0)").Scan(&totalMonthlyStake).Error; err != nil {
+		return nil, fmt.Errorf("查询全网当月质押总额失败: %v", err)
+	}
+
+	monthlyStakeRatio := 0.0
+	if totalMonthlyStake > 0 {
+		userStakeValue := float64(userMonthlyStake) / 1e18
+		totalStakeValue := float64(totalMonthlyStake) / 1e18
+		monthlyStakeRatio = (userStakeValue / totalStakeValue) * 100
+	}
+
+	// 6. 计算当天质押奖励
+	dailyStakeRewards := 0.0
+	if userErr == nil {
+		// 查询昨天的积分信息
+		yesterday := now.AddDate(0, 0, -1)
+		startOfYesterday := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
+		endOfYesterday := startOfYesterday.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+		var yesterdayUser model.Users
+		yesterdayErr := ctx.Ctx.DB.Where("chain_id = ? AND address = ? AND jf_time BETWEEN ? AND ?",
+			chainId, userAddress, startOfYesterday, endOfYesterday).
+			Order("jf_time DESC").
+			First(&yesterdayUser).Error
+
+		var yesterdayJf decimal.Decimal
+		if yesterdayErr == nil {
+			yesterdayJf = yesterdayUser.Jf
+		} else {
+			yesterdayJf = user.Jf // 保守估计
+		}
+
+		dailyJfIncrease := user.Jf.Sub(yesterdayJf)
+		if dailyJfIncrease.IsNegative() {
+			dailyJfIncrease = decimal.Zero
+		}
+
+		rewardRate := decimal.NewFromFloat(0.01)
+		dailyRewards := dailyJfIncrease.Mul(rewardRate)
+		dailyStakeRewards, _ = dailyRewards.Float64()
+	}
+
+	// 7. 计算APY
+	apy := 0.0
+	if totalStaked > 0 && len(stakeRecords) > 0 {
+		totalStakedValue := float64(totalStaked) / 1e18
+		avgStakeDurationDays := totalDuration.Hours() / 24 / float64(len(stakeRecords))
+
+		if avgStakeDurationDays > 0 && totalStakedValue > 0 {
+			apy = (totalRewards / totalStakedValue) * (365 / avgStakeDurationDays) * 100
+		}
+	}
+
+	// 8. 返回完整的概览数据
 	overview := &model.StakeOverview{
-		TotalStaked:  float64(totalStaked) / 1e18, // 假设18位小数
-		TotalRewards: totalRewards,
-		ActiveStakes: int(activeStakes),
-		UserAddress:  userAddress,
-		ChainId:      chainId,
+		TotalStaked:       float64(totalStaked) / 1e18,
+		TotalRewards:      totalRewards,
+		ActiveStakes:      activeStakes,
+		UserAddress:       userAddress,
+		ChainId:           chainId,
+		MonthlyStakeRatio: monthlyStakeRatio,
+		DailyStakeRewards: dailyStakeRewards,
+		APY:               apy,
 	}
 
 	return overview, nil
+}
+
+// CalculateAPY 计算年化收益率(APY)
+func (s *StakeService) CalculateAPY(userAddress string, chainId int64) (float64, error) {
+	// 获取用户当前总质押量
+	var totalStaked int64
+	query := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).
+		Where("address = ? AND chain_id = ? AND event_type = ?", userAddress, chainId, "Staked")
+
+	if err := query.Select("COALESCE(SUM(amount), 0)").Scan(&totalStaked).Error; err != nil {
+		return 0, fmt.Errorf("计算总质押量失败: %v", err)
+	}
+
+	if totalStaked == 0 {
+		return 0, nil // 如果没有质押，APY为0
+	}
+
+	// 获取用户总收益（从积分信息计算）
+	totalRewards, err := s.getUserRewards(userAddress, chainId)
+	if err != nil {
+		return 0, fmt.Errorf("获取用户总收益失败: %v", err)
+	}
+
+	// 计算平均质押时间（以天为单位）
+	var avgStakeDurationDays float64
+	var stakeRecords []model.UserOperationRecord
+	stakeQuery := ctx.Ctx.DB.Where("address = ? AND chain_id = ? AND event_type = ?",
+		userAddress, chainId, "Staked").Find(&stakeRecords)
+
+	if stakeQuery.Error != nil {
+		return 0, fmt.Errorf("查询质押记录失败: %v", stakeQuery.Error)
+	}
+
+	if len(stakeRecords) > 0 {
+		totalDuration := time.Duration(0)
+		for _, record := range stakeRecords {
+			// 检查是否已提取
+			var withdrawRecord model.UserOperationRecord
+			withdrawErr := ctx.Ctx.DB.Where("address = ? AND chain_id = ? AND event_type = ? AND amount = ?",
+				userAddress, record.ChainId, "withdraw", record.Amount).First(&withdrawRecord).Error
+
+			if withdrawErr == nil {
+				// 已提取，计算从质押到提取的时间
+				duration := withdrawRecord.OperationTime.Sub(record.OperationTime)
+				totalDuration += duration
+			} else {
+				// 未提取，计算从质押到当前时间的时间
+				duration := time.Now().Sub(record.OperationTime)
+				totalDuration += duration
+			}
+		}
+		avgStakeDurationDays = totalDuration.Hours() / 24 / float64(len(stakeRecords))
+	} else {
+		avgStakeDurationDays = 30 // 默认30天
+	}
+
+	// 计算年化收益率
+	totalStakedValue := float64(totalStaked) / 1e18
+
+	if avgStakeDurationDays <= 0 || totalStakedValue <= 0 {
+		return 0, nil
+	}
+
+	// APY = (总收益 / 总质押量) * (365 / 平均质押天数) * 100%
+	apy := (totalRewards / totalStakedValue) * (365 / avgStakeDurationDays) * 100
+
+	return apy, nil
+}
+
+// GetDailyStakeRewards 计算当天质押奖励
+func (s *StakeService) GetDailyStakeRewards(userAddress string, chainId int64) (float64, error) {
+	// 获取当天的开始和结束时间
+	now := time.Now()
+	//startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	//endOfDay := startOfDay.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	// 查询用户信息获取当前积分
+	var user model.Users
+	if err := ctx.Ctx.DB.Where("chain_id = ? AND address = ?", chainId, userAddress).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil // 用户不存在，返回0收益
+		}
+		return 0, fmt.Errorf("查询用户信息失败: %v", err)
+	}
+
+	// 查询昨天的积分信息（用于计算当日收益）
+	yesterday := now.AddDate(0, 0, -1)
+	startOfYesterday := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
+	endOfYesterday := startOfYesterday.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	// 查询昨天最后时刻的用户积分记录
+	var yesterdayUser model.Users
+	yesterdayErr := ctx.Ctx.DB.Where("chain_id = ? AND address = ? AND jf_time BETWEEN ? AND ?",
+		chainId, userAddress, startOfYesterday, endOfYesterday).
+		Order("jf_time DESC").
+		First(&yesterdayUser).Error
+
+	var yesterdayJf decimal.Decimal
+	if yesterdayErr == nil {
+		yesterdayJf = yesterdayUser.Jf
+	} else {
+		// 如果没有昨天的记录，使用当前积分作为基准（保守估计）
+		yesterdayJf = user.Jf
+	}
+
+	// 计算当日积分增长
+	dailyJfIncrease := user.Jf.Sub(yesterdayJf)
+	if dailyJfIncrease.IsNegative() {
+		dailyJfIncrease = decimal.Zero // 如果积分减少，当日收益为0
+	}
+
+	// 将积分转换为收益（使用与getUserRewards相同的规则）
+	rewardRate := decimal.NewFromFloat(0.01) // 1积分 = 0.01代币
+	dailyRewards := dailyJfIncrease.Mul(rewardRate)
+
+	reward, _ := dailyRewards.Float64()
+	return reward, nil
+}
+
+// GetMonthlyStakeValueRatio 计算当月质押总价值占比
+func (s *StakeService) GetMonthlyStakeValueRatio(userAddress string, chainId int64) (float64, error) {
+	// 获取当前月份的开始和结束时间
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	endOfMonth := startOfMonth.AddDate(0, 1, -1).Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	// 查询当月用户质押总额
+	var userMonthlyStake int64
+	userQuery := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).
+		Where("address = ? AND chain_id = ? AND event_type = ? AND operation_time BETWEEN ? AND ?",
+			userAddress, chainId, "Staked", startOfMonth, endOfMonth)
+
+	if err := userQuery.Select("COALESCE(SUM(amount), 0)").Scan(&userMonthlyStake).Error; err != nil {
+		return 0, fmt.Errorf("查询用户当月质押总额失败: %v", err)
+	}
+
+	// 查询当月全网质押总额
+	var totalMonthlyStake int64
+	totalQuery := ctx.Ctx.DB.Model(&model.UserOperationRecord{}).
+		Where("chain_id = ? AND event_type = ? AND operation_time BETWEEN ? AND ?",
+			chainId, "Staked", startOfMonth, endOfMonth)
+
+	if err := totalQuery.Select("COALESCE(SUM(amount), 0)").Scan(&totalMonthlyStake).Error; err != nil {
+		return 0, fmt.Errorf("查询全网当月质押总额失败: %v", err)
+	}
+
+	// 计算占比
+	if totalMonthlyStake == 0 {
+		return 0, nil // 如果当月没有质押，占比为0
+	}
+
+	userStakeValue := float64(userMonthlyStake) / 1e18 // 转换为代币单位
+	totalStakeValue := float64(totalMonthlyStake) / 1e18
+	ratio := (userStakeValue / totalStakeValue) * 100 // 转换为百分比
+
+	return ratio, nil
 }
 
 // updateUserScore 更新用户积分

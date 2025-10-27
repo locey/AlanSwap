@@ -16,9 +16,12 @@ type StakeRecord struct {
 
 // StakeOverview 质押概览
 type StakeOverview struct {
-	TotalStaked  float64 `json:"totalStaked"`
-	TotalRewards float64 `json:"totalRewards"`
-	ActiveStakes int     `json:"activeStakes"`
-	UserAddress  string  `json:"userAddress"`
-	ChainId      int64   `json:"chainId"`
+	TotalStaked       float64 `json:"totalStaked"`
+	TotalRewards      float64 `json:"totalRewards"`
+	ActiveStakes      int     `json:"activeStakes"`
+	UserAddress       string  `json:"userAddress"`
+	ChainId           int64   `json:"chainId"`
+	MonthlyStakeRatio float64 `json:"monthlyStakeRatio"` // 当月质押总价值占比
+	DailyStakeRewards float64 `json:"dailyStakeRewards"` // 当天质押奖励
+	APY               float64 `json:"apy"`               // 年化收益率
 }

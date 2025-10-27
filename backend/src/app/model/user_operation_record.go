@@ -14,6 +14,8 @@ type UserOperationRecord struct {
 	BlockNumber   int64     `json:"blockNumber" gorm:"column:block_number"`
 	EventType     string    `json:"eventType" gorm:"column:event_type"` // 事件类型 (Event Type)
 	TokenAddress  string    `json:"tokenAddress" gorm:"column:token_address"`
+	CreatedAt     time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt     time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 }
 
 func (UserOperationRecord) TableName() string {

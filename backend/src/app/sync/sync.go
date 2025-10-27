@@ -19,8 +19,8 @@ import (
 )
 
 func StartSync(c context.Context) {
-    // 启动：定时重建默克尔树与上链更新（每60秒）
-    go StartMerkleAutoUpdate(c, 60*time.Second)
+	// 启动：定时重建默克尔树与上链更新（每60秒）
+	go StartMerkleAutoUpdate(c, 60*time.Second)
 	var wg sync.WaitGroup
 	// 查询所有链信息
 	// 查询所有链信息
@@ -267,7 +267,8 @@ func analysisStakedTopic(vLog types.Log, chainId int) *model.UserOperationRecord
 		amount := new(big.Int).SetBytes(common.TrimLeftZeroes(data[0:32]))
 		stakedAt := new(big.Int).SetBytes(common.TrimLeftZeroes(data[32:64]))
 		unlockTime := new(big.Int).SetBytes(common.TrimLeftZeroes(data[64:96]))
-
+		// 获取当前时间，用于CreatedAt和UpdatedAt字段
+		currentTime := time.Now()
 		// 创建质押记录并保存到数据库
 		userOperationRecord := model.UserOperationRecord{
 			ChainId:       int64(chainId),
@@ -280,6 +281,8 @@ func analysisStakedTopic(vLog types.Log, chainId int) *model.UserOperationRecord
 			TxHash:        vLog.TxHash.Hex(),
 			BlockNumber:   int64(vLog.BlockNumber),
 			EventType:     "Staked",
+			CreatedAt:     currentTime, // 显式设置创建时间
+			UpdatedAt:     currentTime, // 显式设置更新时间
 		}
 		return &userOperationRecord
 	}
@@ -302,7 +305,8 @@ func analysisWithdrawnTopic(vLog types.Log, chainId int) *model.UserOperationRec
 		data := vLog.Data
 		amount := new(big.Int).SetBytes(common.TrimLeftZeroes(data[0:32]))
 		withdrawnAt := new(big.Int).SetBytes(common.TrimLeftZeroes(data[32:64]))
-
+		// 获取当前时间，用于CreatedAt和UpdatedAt字段
+		currentTime := time.Now()
 		// 创建提现记录并保存到数据库 (复用StakedRecord模型)
 		userOperationRecord := model.UserOperationRecord{
 			ChainId:       int64(chainId),
@@ -315,6 +319,8 @@ func analysisWithdrawnTopic(vLog types.Log, chainId int) *model.UserOperationRec
 			TxHash:      vLog.TxHash.Hex(),
 			BlockNumber: int64(vLog.BlockNumber),
 			EventType:   "Withdrawn",
+			CreatedAt:   currentTime, // 显式设置创建时间
+			UpdatedAt:   currentTime, // 显式设置更新时间
 		}
 		return &userOperationRecord
 	}
@@ -323,55 +329,55 @@ func analysisWithdrawnTopic(vLog types.Log, chainId int) *model.UserOperationRec
 
 // updateDbUserAmount 更新数据库用户金额
 func updateDbUserAmount(userOperationRecords []*model.UserOperationRecord, chainId int, targetBlockNum uint64, address string) error {
-    if len(userOperationRecords) == 0 {
-        // 更新质押池服务配置的最后区块号
-        if err := ctx.Ctx.DB.Model(&model.Chain{}).Where("chain_id = ? AND address = ?", int64(chainId), address).Update("last_block_num", targetBlockNum).Error; err != nil {
-            log.Logger.Error("更新质押池最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
-            return err
-        }
-        log.Logger.Info("更新数据表最后区块号成功" + strconv.Itoa(int(targetBlockNum)))
-        return nil
-    }
-    txErr := ctx.Ctx.DB.Transaction(func(tx *gorm.DB) error {
-        // 批量插入用户操作记录
-        if err := tx.CreateInBatches(userOperationRecords, 100).Error; err != nil {
-            log.Logger.Error("批量插入用户操作记录失败", zap.Error(err))
-            return err
-        }
+	if len(userOperationRecords) == 0 {
+		// 更新质押池服务配置的最后区块号
+		if err := ctx.Ctx.DB.Model(&model.Chain{}).Where("chain_id = ? AND address = ?", int64(chainId), address).Update("last_block_num", targetBlockNum).Error; err != nil {
+			log.Logger.Error("更新质押池最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
+			return err
+		}
+		log.Logger.Info("更新数据表最后区块号成功" + strconv.Itoa(int(targetBlockNum)))
+		return nil
+	}
+	txErr := ctx.Ctx.DB.Transaction(func(tx *gorm.DB) error {
+		// 批量插入用户操作记录
+		if err := tx.CreateInBatches(userOperationRecords, 100).Error; err != nil {
+			log.Logger.Error("批量插入用户操作记录失败", zap.Error(err))
+			return err
+		}
 
-        // 根据质押事件标记对应的任务为已完成（自动验证类）
-        for _, record := range userOperationRecords {
-            if record.EventType == "Staked" {
-                if err := markTaskCompleted(tx, record.Address, "Stake Once"); err != nil {
-                    log.Logger.Warn("标记质押任务完成失败", zap.Error(err), zap.String("task", "Stake Once"), zap.String("user", record.Address))
-                }
-            }
-        }
+		// 根据质押事件标记对应的任务为已完成（自动验证类）
+		for _, record := range userOperationRecords {
+			if record.EventType == "Staked" {
+				if err := markTaskCompleted(tx, record.Address, "Stake Once"); err != nil {
+					log.Logger.Warn("标记质押任务完成失败", zap.Error(err), zap.String("task", "Stake Once"), zap.String("user", record.Address))
+				}
+			}
+		}
 
-        type userTokenKey struct {
-            Address      string
-            TokenAddress string
-        }
-        userAmounts := make(map[userTokenKey]*big.Int)
-        for _, record := range userOperationRecords {
-            key := userTokenKey{
-                Address:      record.Address,
-                TokenAddress: record.TokenAddress,
-            }
-            amount := big.NewInt(record.Amount)
-            if userAmounts[key] == nil {
-                userAmounts[key] = big.NewInt(0)
-            }
-            if record.EventType == "Staked" {
-                userAmounts[key].Add(userAmounts[key], amount)
-            } else if record.EventType == "Withdrawn" {
-                userAmounts[key].Sub(userAmounts[key], amount)
-            }
-        }
-        //更新每个用户tokenAddress总金额
-        for key, amount := range userAmounts {
-            // 修改:使用UPSERT操作处理用户记录不存在的情况
-            if err := tx.Exec(`
+		type userTokenKey struct {
+			Address      string
+			TokenAddress string
+		}
+		userAmounts := make(map[userTokenKey]*big.Int)
+		for _, record := range userOperationRecords {
+			key := userTokenKey{
+				Address:      record.Address,
+				TokenAddress: record.TokenAddress,
+			}
+			amount := big.NewInt(record.Amount)
+			if userAmounts[key] == nil {
+				userAmounts[key] = big.NewInt(0)
+			}
+			if record.EventType == "Staked" {
+				userAmounts[key].Add(userAmounts[key], amount)
+			} else if record.EventType == "Withdrawn" {
+				userAmounts[key].Sub(userAmounts[key], amount)
+			}
+		}
+		//更新每个用户tokenAddress总金额
+		for key, amount := range userAmounts {
+			// 修改:使用UPSERT操作处理用户记录不存在的情况
+			if err := tx.Exec(`
                                     INSERT INTO users (chain_id, token_address, address, total_amount, last_block_num)
                                     VALUES (?, ?, ?, ?, ?)
                                     ON CONFLICT (chain_id, token_address, address)
@@ -379,16 +385,16 @@ func updateDbUserAmount(userOperationRecords []*model.UserOperationRecord, chain
                                         total_amount = users.total_amount + ?,
                                         last_block_num = ?
                                 `, chainId, key.TokenAddress, key.Address, amount.Int64(), targetBlockNum, amount.Int64(), targetBlockNum).Error; err != nil {
-                log.Logger.Error("更新用户总金额失败", zap.String("user", key.Address), zap.String("token_address", key.TokenAddress), zap.String("amount", amount.String()), zap.Error(err))
-                return err
-            }
-        }
-        // 更新质押池服务配置的最后区块号
-        if err := tx.Model(&model.Chain{}).Where("chain_id = ? AND address = ?", int64(chainId), address).Update("last_block_num", targetBlockNum).Error; err != nil {
-            log.Logger.Error("更新质押池最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
-            return err
-        }
-        return nil
-    })
-    return txErr
+				log.Logger.Error("更新用户总金额失败", zap.String("user", key.Address), zap.String("token_address", key.TokenAddress), zap.String("amount", amount.String()), zap.Error(err))
+				return err
+			}
+		}
+		// 更新质押池服务配置的最后区块号
+		if err := tx.Model(&model.Chain{}).Where("chain_id = ? AND address = ?", int64(chainId), address).Update("last_block_num", targetBlockNum).Error; err != nil {
+			log.Logger.Error("更新质押池最后区块号失败", zap.Int("chain_id", chainId), zap.Error(err))
+			return err
+		}
+		return nil
+	})
+	return txErr
 }

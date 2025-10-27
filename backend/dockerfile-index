@@ -1,0 +1,33 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# 配置国内 Go 代理
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=sum.golang.google.cn
+
+# 复制依赖文件
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 构建索引器服务，使用优化参数
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o indexer ./src/cmd/indexer
+
+# 最终运行镜像
+FROM alpine:3.18
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
+COPY --from=builder /app/indexer .
+CMD ["./indexer"]
+
+
+#docker run -d   --name api-service   -p 8080:8080   -v /root/projects/AlanSwap/backend/config/config.toml:/app/config/config.toml  alanswap-api:latest
+
+
+#docker run -d   --name index-service   -p 8000:8000   -v /root/projects/AlanSwap/backend/config/config.toml:/app/config/config.toml  alanswap-index:latest
+#密码：BossFi_2025
+#ip：117.72.201.234
+#用户名：root
