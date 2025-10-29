@@ -27,7 +27,7 @@
 
 @keyframes pulse-glow {
   0% {
-    opacity: .8;
+    opacity: 0.8;
     transform: scale(1);
   }
 
@@ -42,7 +42,6 @@
 }
 
 @keyframes float-slow {
-
   0%,
   100% {
     transform: translateY(0);
@@ -67,17 +66,40 @@
 
 .neon-text {
   color: #00d4ff;
-  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff, 0 0 20px #00d4ff;
+  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff,
+    0 0 20px #00d4ff;
+}
+
+.neon-text-green {
+  color: #37f777;
+  text-shadow: 0 0 5px #37f777, 0 0 10px #37f777, 0 0 15px #37f777,
+    0 0 20px #37f777;
+}
+
+.neon-text-purple {
+  color: #f54ef5;
+  text-shadow: 0 0 5px #f54ef5, 0 0 10px #f54ef5, 0 0 15px #f54ef5,
+    0 0 20px #f54ef5;
+}
+
+.neon-text-black {
+  color: #000000;
+  text-shadow: 0 0 5px #000000;
+}
+
+.neon-text-white {
+  color: #ffffff;
+  text-shadow: 0 0 10px #ffffff;
 }
 
 .neon-text-enhanced {
   color: #00d4ff;
-  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff, 0 0 20px #00d4ff, 0 0 35px #00d4ff, 0 0 40px #00d4ff;
+  text-shadow: 0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 15px #00d4ff,
+    0 0 20px #00d4ff, 0 0 35px #00d4ff, 0 0 40px #00d4ff;
   animation: 2s ease-in-out infinite alternate neon-flicker;
 }
 
 @keyframes bounce-slow {
-
   0%,
   100% {
     transform: translateY(0);
@@ -95,7 +117,7 @@
 @keyframes scaleIn {
   0% {
     opacity: 0;
-    transform: scale(.95);
+    transform: scale(0.95);
   }
 
   100% {
@@ -105,11 +127,10 @@
 }
 
 .animate-scale-in {
-  animation: .2s ease-out scaleIn;
+  animation: 0.2s ease-out scaleIn;
 }
 
 @keyframes flaot-slow {
-
   0%,
   100% {
     transform: translateY(0) rotate(0);
@@ -131,7 +152,6 @@
 .animate-float-slow {
   animation: 8s ease-in-out infinite float-slow;
 }
-
 
 .card-cyber {
   -webkit-backdrop-filter: blur(20px);
@@ -156,12 +176,11 @@
 }
 
 .duration-300 {
-  --tw-duration: .3s;
-  transition-duration: .3s;
+  --tw-duration: 0.3s;
+  transition-duration: 0.3s;
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -174,4 +193,8 @@
 
 .animate-float {
   animation: 6s ease-in-out infinite float;
+}
+
+.box-shadow-cyan {
+  box-shadow: 0 0 20px #00d4ff4d;
 }
