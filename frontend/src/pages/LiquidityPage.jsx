@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState,useEffect  } from "react"
 import StatCard from "./StatCard"
 import GlowCard from "./GlowCard"
 import PoolCard from "./PoolCard";
@@ -8,6 +8,9 @@ import EmptyState from "./EmptyState";
 export default function LiquidityPage({ stats }) {
     const { walletConnected } = useWallet();
     const [currentPool, setCurrentPool] = useState('allPool');
+    const [poolList, setPoolList] = useState([]); // 后端返回的真实列表
+    // const [loading, setLoading] = useState(true);
+
     const togglePoolClick = (cPool) => {
         setCurrentPool(cPool);
     }
@@ -17,10 +20,46 @@ export default function LiquidityPage({ stats }) {
         { pair: "UNI/USDC", tvl: "$1.8M", vol: "$450K", fee: "$1,350", myshare: "0.05%", apy: "12.1%", badge: '🦄💵' },
         { pair: "LINK/ETH", tvl: "$980K", vol: "$230K", fee: "$690", myshare: "0%", apy: "20.1%", badge: '🔗🔷' }
     ])
-    const setConnectWallet = ()=>{
-        console.log(999)
+
+    // 调用后端接口获取 流动性池列表 的方法
+    async function fetchLiQuidityList({ walletAddress, page, pageSize, poolType }) {
+        try {
+            const url = `https://8bffa73e18a7.ngrok-free.app/api/v1/liquidity/pools?walletAddress=${walletAddress}&page=${page}&pageSize=${pageSize}&poolType=${poolType}`;
+            const res = await fetch(url, { method: "GET" });
+            if (!res.ok) throw new Error("请求失败: " + res.status);
+            const data = await res.json();
+            return data;
+        } catch (e) {
+            console.error("获取 QuidityList 出错:", e);
+            throw e;
+        }
     }
 
+    // 进入页面自动调用
+    useEffect(() => {
+        async function load() {
+            // setLoading(true);
+            try {
+                const data = await fetchLiQuidityList({
+                    walletAddress: walletConnected || "", // 未连接时传空串
+                    page: 1,
+                    pageSize: 20,
+                    poolType: currentPool === "myPool" ? "my" : "all"
+                });
+                setPoolList(data?.list || []);
+            } catch {
+                setPoolList([]);
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, [walletConnected, currentPool]); // 钱包状态或 Tab 切换时重新拉取
+
+    const setConnectWallet = () => console.log("TODO: connect wallet");
+
+    // 骨架屏/加载态
+    // if (loading) return <div className="text-center p-10">加载中…</div>;
     return (
         <div className="space-y-8">
             <div className="text-center">

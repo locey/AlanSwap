@@ -6,7 +6,7 @@ import SwapPage from './pages/SwapPage';
 import LiquidityPage from './pages/LiquidityPage';
 import MiningPage from './pages/MiningPage';
 import RewardsPage from './pages/RewardsPage';
-
+import { useWallet } from './pages/useWallet';
 // 路由组件
 const Router = ({ children, cRoute }) => {
   return React.Children.map(children, child => {
@@ -22,6 +22,7 @@ const Route = ({ path, children }) => {
 };
 
 export default function App() {
+  const { walletConnected, address, chainId } = useWallet();
   const [currentRoute, setCurrentRoute] = useState('/swap');
   const [notifications, setNotifications] = useState([]);
   // 显示通知
@@ -40,10 +41,43 @@ export default function App() {
     fees: 45.67,
     pools: 1,
     totalStaked: 3456.78,
-    rewards: 123.45,
-    apy: 13.7
+    totalStaked: 123.45,
+    activeStakes: 13.7
   });
+  //获取用户的质押记录
+  const loadRecords = async () => {
+    if (!address || !chainId) return;
+    const res = await fetch(`${VITE_BASEURL}/api/v1/stake/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userAddress: address, chainId, page: 1, pageSize: 20 })
+    });
+    const json = await res.json();
+    console.log('质押记录:', json.data.records);
+  };
+  // 获取用户的质押概览
+  const loadOverview = async () => {
+    if (!address || !chainId) return;
 
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BASEURL}/api/v1/stake/overview`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: address, chainId }),
+        }
+      );
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const { data } = await res.json();
+      console.log('质押概览:', data);
+      // 这里可以把 data 存到 state，例如 setOverview(data)
+    } catch (e) {
+      console.error('加载质押概览失败:', e);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white relative overflow-x-hidden">
       <BackgroundStars />
