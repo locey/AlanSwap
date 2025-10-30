@@ -34,7 +34,7 @@ type StakeService struct {
 func NewStakeService() *StakeService {
 	return &StakeService{
 		privateKey:           "e22afa1331382e752eb5afce597290f5d14c307b613f649ae0b5c47cd84ad974", // 应该从配置文件或环境变量中获取
-		stakeContractAddress: "0xEDb4C07B6AfFb61C2A2fa22cBb30552b4F7748f4",                       // 应该从配置文件或环境变量中获取
+		stakeContractAddress: "0xBE023722Da91C220D2051Fa37072b0378754CC72",                       // 应该从配置文件或环境变量中获取
 		erc20ContractAddress: "0x241bBa478bAD3945B9b122b80B756b5D19b423a5",                       // 应该从配置文件或环境变量中获取
 	}
 }
