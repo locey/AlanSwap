@@ -98,6 +98,10 @@ func ApiBind(r *gin.Engine, ctx *ctx.Context) {
 	// 管理员更新默克尔根（需要运维调用，后续可加鉴权）
 	v.POST("/airdrop/admin/updateMerkleRoot", airDropApi.AdminUpdateMerkleRoot)
 
+	// 用户资料接口
+	userApi := api.NewUserApi()
+	v.GET("/user/profile", userApi.GetProfile)
+
 	// 质押相关接口（需要验证）
 	stakeApi := api.NewStakeApi()
 	// 质押代币
